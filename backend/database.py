@@ -3,7 +3,7 @@ import os
 import json
 import hashlib
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'veduka.db')
+DB_PATH = os.environ.get("DATABASE_PATH") or os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'veduka.db')
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -369,7 +369,8 @@ def init_db():
     ''')
 
     conn.commit()
-    seed_initial_data(conn)
+    if os.environ.get("ENABLE_DEMO_DATA", "true").lower() in ("1", "true", "yes"):
+        seed_initial_data(conn)
     conn.close()
 
 def seed_initial_data(conn):
