@@ -2,17 +2,13 @@ services:
   - type: web
     name: veduka-ai
     runtime: python
-    plan: starter
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --workers 1 --bind 0.0.0.0:$PORT run:app
     healthCheckPath: /
-    disk:
-      name: veduka-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: DATABASE_PATH
-        value: /var/data/veduka.db
+        value: /tmp/veduka.db
       - key: ENABLE_DEMO_DATA
         value: "false"
       - key: JWT_SECRET_KEY
