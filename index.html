@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veduka AI - India's 1st Smart AI Event Marketplace</title>
+  <meta name="description" content="All-in-one AI-powered event marketplace. Transparent itemized pricing, Telugu & Hindi voice assistance, AI event creation, and trusted local vendors.">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+              dark: '#1e1b4b'
+            },
+            festive: {
+              gold: '#f59e0b',
+              amber: '#d97706',
+              marigold: '#ea580c'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="min-h-screen flex flex-col pb-20 md:pb-0">
+
+  <!-- Phase 1 Demo Banner -->
+  <div class="bg-gradient-to-r from-amber-600 via-rose-600 to-amber-700 text-white text-xs px-4 py-2 text-center font-medium shadow-sm flex items-center justify-center gap-2">
+    <span class="bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider" data-i18n="demoBannerTitle">⚡ PHASE 1 PREVIEW</span>
+    <span data-i18n="demoBannerText">Interactive frontend preview with itemized pricing, trilingual toggle, and voice assistant. Backend database and payments wire in Phase 2.</span>
+  </div>
+
+  <!-- Header / Navigation -->
+  <header class="sticky top-0 z-40 glass-header border-b border-gray-100 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
+      
+      <!-- Logo / Brand Identity -->
+      <a href="#" class="flex items-center gap-2.5 group">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-600 to-amber-500 flex items-center justify-center text-white shadow-md group-hover:rotate-6 transition-transform">
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="text-xl font-extrabold tracking-tight text-gray-900 group-hover:text-rose-600 transition" data-i18n="brandName">
+            Veduka AI
+          </span>
+          <span class="block text-[10px] font-semibold text-rose-600 uppercase tracking-wider" data-i18n="brandTagline">
+            Smart Event Marketplace
+          </span>
+        </div>
+      </a>
+
+      <!-- Actions: Language Selector, Voice Mic & Vendor Portal -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        
+        <!-- Trilingual Language Switcher (EN, TE, HI) -->
+        <div class="bg-gray-100 p-1 rounded-full flex items-center text-xs font-semibold border border-gray-200">
+          <button data-lang="en" class="lang-btn px-2.5 py-1 rounded-full bg-rose-600 text-white shadow-sm transition">
+            EN
+          </button>
+          <button data-lang="te" class="lang-btn px-2.5 py-1 rounded-full text-gray-700 hover:bg-gray-200 transition">
+            తెలుగు
+          </button>
+          <button data-lang="hi" class="lang-btn px-2.5 py-1 rounded-full text-gray-700 hover:bg-gray-200 transition">
+            हिन्दी
+          </button>
+        </div>
+
+        <!-- Voice Assistant Header Trigger -->
+        <button id="header-voice-btn" 
+          aria-label="Voice Assistant"
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs transition shadow-xs">
+          <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+          </svg>
+          <span data-i18n="voiceAssistantBtn">Voice Assistant</span>
+        </button>
+
+        <!-- Entry Point 2: Register My Business -->
+        <button id="nav-register-business-btn" 
+          class="hidden md:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs shadow-sm transition">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+          <span data-i18n="ctaRegisterBusiness">Register My Business</span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section with Dual Entry Points -->
+  <section class="relative overflow-hidden festive-gradient-subtle border-b border-rose-100 pt-8 pb-12 sm:pt-14 sm:pb-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      
+      <!-- Top Badge -->
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-rose-200 shadow-xs mb-4">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-xs font-semibold text-gray-700" data-i18n="aiPlannerBadge">NEW: AI Event Architect</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        
+        <!-- Left: Hero Headline & Dual CTAs -->
+        <div class="lg:col-span-7 space-y-5">
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight" data-i18n="heroTitle">
+            Celebrations Planned with Precision & Heart
+          </h1>
+          <p class="text-sm sm:text-base text-gray-600 max-w-xl leading-relaxed" data-i18n="heroSubtitle">
+            Discover trusted local vendors, explore 100% itemized upfront pricing, and plan your dream wedding or milestone event with AI in your mother tongue.
+          </p>
+
+          <!-- The Two Clear Entry Points -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+            <!-- Entry Point 1: Plan or Book an Event -->
+            <button id="hero-plan-event-btn" 
+              class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-sm shadow-lg shadow-rose-600/25 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5">
+              <span>🎉</span>
+              <span data-i18n="ctaPlanEvent">Plan or Book an Event</span>
+            </button>
+
+            <!-- Entry Point 2: Register My Business -->
+            <button id="hero-register-business-btn" 
+              class="px-6 py-3.5 rounded-2xl bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-200 font-bold text-sm shadow-xs flex items-center justify-center gap-2 transition-all">
+              <span>💼</span>
+              <span data-i18n="ctaRegisterBusiness">Register My Business</span>
+            </button>
+          </div>
+
+          <!-- Telugu & Hindi Voice Prompt Hint Chip -->
+          <div class="pt-2 flex items-center gap-2">
+            <span class="text-xs text-gray-500 font-medium">Try speaking:</span>
+            <button id="hero-voice-chip" class="text-xs px-3 py-1 bg-white hover:bg-rose-50 text-rose-700 font-medium rounded-full border border-rose-200 transition flex items-center gap-1.5 shadow-xs">
+              <span>🎤</span>
+              <span>"హైదరాబాద్ లో బెస్ట్ క్యాటరింగ్ కావాలి"</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: AI Event Planner Launchpad Card -->
+        <div class="lg:col-span-5">
+          <div class="bg-white rounded-3xl p-6 sm:p-7 border-2 border-rose-200/80 shadow-xl relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-36 h-36 bg-amber-400/20 rounded-full blur-2xl"></div>
+            <div class="absolute -bottom-12 -left-12 w-36 h-36 bg-rose-500/20 rounded-full blur-2xl"></div>
+            
+            <div class="relative z-10 space-y-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl">
+                  ✨
+                </div>
+                <div>
+                  <h3 class="font-bold text-gray-900 text-base" data-i18n="aiPlannerHeading">
+                    Plan Your Event in 60 Seconds with AI
+                  </h3>
+                  <p class="text-xs text-gray-500">Multilingual: Telugu • Hindi • English</p>
+                </div>
+              </div>
+
+              <p class="text-xs text-gray-600 leading-relaxed" data-i18n="aiPlannerDesc">
+                Tell our AI your event type, guest count, and city. Get an itemized budget breakdown, personalized themes, and recommended vendors instantly.
+              </p>
+
+              <!-- Mini Quick Intake -->
+              <div class="space-y-2.5 pt-1">
+                <div class="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600">
+                  <span>🏛️</span>
+                  <span class="font-medium">Weddings, Birthdays, Sangeet & Cradle Ceremonies</span>
+                </div>
+                <div class="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600">
+                  <span>💰</span>
+                  <span class="font-medium">Itemized Budget Allocation & Theme Colors</span>
+                </div>
+              </div>
+
+              <button id="hero-ai-planner-btn" 
+                class="w-full py-3.5 px-4 rounded-xl ai-shimmer text-white font-bold text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition flex items-center justify-center gap-2">
+                <span data-i18n="aiPlannerBtn">Launch AI Smart Planner</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Discovery & Search Section -->
+  <main id="discovery-section" class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    
+    <!-- Search Bar & City Selector -->
+    <div class="bg-white p-4 rounded-3xl border border-gray-200 shadow-sm mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+        
+        <!-- Search Input -->
+        <div class="sm:col-span-8 relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <input 
+            type="text" 
+            id="search-input" 
+            data-i18n-placeholder="searchPlaceholder"
+            placeholder="Search photographers, catering, decor, or mandapams..." 
+            class="w-full pl-10 pr-4 py-3 bg-gray-50 hover:bg-gray-100/60 focus:bg-white rounded-2xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 text-sm outline-none transition"
+          />
+        </div>
+
+        <!-- City Dropdown -->
+        <div class="sm:col-span-4 relative">
+          <select 
+            id="city-select" 
+            class="w-full py-3 px-3.5 bg-gray-50 hover:bg-gray-100/60 focus:bg-white rounded-2xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 text-sm font-medium text-gray-700 outline-none transition appearance-none cursor-pointer">
+            <!-- Populated via JavaScript -->
+          </select>
+          <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-400 text-xs">
+            ▼
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Category Filter Pills (Horizontal Scroll on Mobile) -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-bold text-gray-900 tracking-tight" data-i18n="categoryFilterTitle">
+          Browse by Category
+        </h2>
+        <span id="vendors-count-display" class="text-xs text-gray-500 font-medium"></span>
+      </div>
+      
+      <div id="categories-container" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+        <!-- Rendered via JavaScript -->
+      </div>
+    </div>
+
+    <!-- Provider Cards Grid -->
+    <div id="vendors-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Rendered via JavaScript with transparent itemized pricing & badges -->
+    </div>
+
+  </main>
+
+  <!-- Mobile Floating Voice Action Button (FAB) -->
+  <button id="fab-voice-btn" 
+    aria-label="Telugu & Hindi Voice Assistant"
+    class="fixed bottom-20 right-4 sm:hidden z-30 w-14 h-14 rounded-full bg-gradient-to-r from-rose-600 to-amber-500 text-white flex items-center justify-center shadow-xl animate-voice-ripple">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+    </svg>
+  </button>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 inset-x-0 z-30 sm:hidden glass-bottom-bar border-t border-gray-200 px-4 py-2 flex items-center justify-around text-[10px] font-semibold text-gray-600">
+    <a href="#" class="flex flex-col items-center text-rose-600">
+      <span class="text-lg">✨</span>
+      <span>Explore</span>
+    </a>
+    <button id="launch-ai-planner-btn" class="flex flex-col items-center hover:text-rose-600">
+      <span class="text-lg">🤖</span>
+      <span>AI Planner</span>
+    </button>
+    <button onclick="document.getElementById('vendor-register-modal').classList.remove('hidden'); document.getElementById('vendor-register-modal').classList.add('flex');" class="flex flex-col items-center hover:text-rose-600">
+      <span class="text-lg">💼</span>
+      <span>Sell</span>
+    </button>
+  </nav>
+
+  <!-- MODAL 1: AI Event Planner Wizard -->
+  <div id="ai-planner-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex items-center justify-between border-b pb-4 mb-4">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">✨</span>
+          <div>
+            <h3 class="font-bold text-lg text-gray-900" data-i18n="aiPlannerHeading">Plan Your Event in 60 Seconds with AI</h3>
+            <p class="text-xs text-gray-500">Auto-allocates budget & matches local providers</p>
+          </div>
+        </div>
+        <button id="close-ai-planner-modal" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      </div>
+
+      <form id="ai-planner-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Event Type</label>
+          <select id="planner-event-type" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+            <option value="wedding">Grand Wedding / Pellillu (పెళ్లి / विवाह)</option>
+            <option value="sangeet">Sangeet & Mehendi Celebration</option>
+            <option value="birthday">Birthday Party</option>
+            <option value="cradle_ceremony">Cradle Ceremony / Barasala (బారసాల)</option>
+            <option value="housewarming">Housewarming / Gruhapravesham (గృహప్రవేశం)</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Expected Guests</label>
+            <input type="number" id="planner-guests" value="200" min="20" max="5000" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">City</label>
+            <select id="planner-city" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+              <option value="Hyderabad">Hyderabad</option>
+              <option value="Vijayawada">Vijayawada</option>
+              <option value="Visakhapatnam">Visakhapatnam</option>
+              <option value="Warangal">Warangal</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Budget Tier</label>
+          <select id="planner-budget" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+            <option value="budget">Smart Budget (Best Value per plate/day)</option>
+            <option value="premium" selected>Premium Celebration (Balanced Elegance & Quality)</option>
+            <option value="luxury">Royal Luxury (Grand production, celebrity artists)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition">
+          Generate Itemized Blueprint
+        </button>
+      </form>
+
+      <!-- AI Results Container -->
+      <div id="ai-planner-results" class="hidden"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Voice Assistant (Telugu, Hindi, English) -->
+  <div id="voice-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative text-center">
+      
+      <button id="close-voice-modal" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+
+      <div class="mb-4">
+        <h3 id="voice-modal-title" class="font-bold text-lg text-gray-900" data-i18n="voiceModalTitle">
+          Veduka Voice Assistant (ఈవెంట్ సహాయకుడు)
+        </h3>
+        <p id="voice-modal-prompt" class="text-xs text-gray-500 mt-1" data-i18n="voiceTapPrompt">
+          Tap the microphone and speak your requirement
+        </p>
+      </div>
+
+      <!-- Pulsing Mic Button -->
+      <div class="my-6 flex justify-center">
+        <button id="voice-mic-action-btn" class="w-20 h-20 rounded-full bg-gradient-to-r from-rose-600 to-amber-500 text-white flex items-center justify-center text-3xl shadow-xl transition-all">
+          🎤
+        </button>
+      </div>
+
+      <p id="voice-mic-status" class="text-xs font-medium text-gray-600 min-h-[20px] mb-4">
+        Ready. Speak in Telugu, Hindi, or English.
+      </p>
+
+      <div id="voice-transcript-output" class="p-3 bg-gray-50 rounded-xl text-xs text-gray-800 font-medium italic min-h-[40px] mb-3">
+        "Speak or click a sample query below..."
+      </div>
+
+      <!-- AI Audio Reply Container -->
+      <div id="voice-ai-answer" class="hidden mb-4"></div>
+
+      <!-- Sample Voice Chips -->
+      <div class="text-left pt-3 border-t">
+        <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2" data-i18n="voiceSamplePromptsTitle">
+          Try saying (Click to test):
+        </span>
+        <div class="space-y-1.5">
+          <button class="sample-voice-chip w-full text-left p-2 rounded-lg bg-rose-50/70 hover:bg-rose-100 text-rose-900 text-xs font-medium transition" 
+            data-query="హైదరాబాద్ లో బెస్ట్ క్యాటరింగ్ కావాలి">
+            🗣️ "హైదరాబాద్ లో బెస్ట్ క్యాటరింగ్ కావాలి"
+          </button>
+          <button class="sample-voice-chip w-full text-left p-2 rounded-lg bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-xs font-medium transition" 
+            data-query="शादी के लिए फोटोग्राफी पैकेज दिखाओ">
+            🗣️ "शादी के लिए फोटोग्राफी पैकेज दिखाओ"
+          </button>
+          <button class="sample-voice-chip w-full text-left p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium transition" 
+            data-query="Show me mandap stage decor in Hyderabad">
+            🗣️ "Show me mandap stage decor in Hyderabad"
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL 3: Itemized Packages & Addons View -->
+  <div id="itemized-packages-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button class="modal-close-btn absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <div id="itemized-packages-content"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Request Custom Quote Form -->
+  <div id="request-quote-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+      <button class="modal-close-btn absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      
+      <div class="mb-4 border-b pb-3">
+        <h3 class="font-bold text-base text-gray-900" data-i18n="customQuoteModalTitle">Request Itemized Quotation</h3>
+        <p class="text-xs text-rose-600 font-semibold" id="quote-target-vendor-name"></p>
+      </div>
+
+      <form id="custom-quote-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1" data-i18n="quoteEventDate">Event Date</label>
+          <input type="date" required class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1" data-i18n="quoteGuests">Estimated Guests</label>
+          <input type="number" value="150" required class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1" data-i18n="quoteNotes">Special Notes / Requirements</label>
+          <textarea rows="3" placeholder="e.g. Need drone photography, pure veg Andhra menu, traditional jasmine floral arch..." class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium"></textarea>
+        </div>
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition" data-i18n="sendQuoteRequest">
+          Send Quote Request (Demo)
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 5: Vendor Registration Preview (Entry Point 2) -->
+  <div id="vendor-register-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button class="modal-close-btn absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+
+      <div class="mb-5 border-b pb-4">
+        <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider mb-1">
+          Vendor Partner Program
+        </span>
+        <h3 class="font-bold text-lg text-gray-900" data-i18n="vendorModalTitle">Partner with Veduka AI: Vendor Onboarding</h3>
+        <p class="text-xs text-gray-500 mt-1" data-i18n="vendorModalSubtitle">
+          List your event services, receive verified client inquiries, and generate instant itemized digital quotations with 0% platform listing fee.
+        </p>
+      </div>
+
+      <form id="vendor-onboarding-form" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1" data-i18n="vendorFormBusinessName">Business / Studio Name</label>
+          <input type="text" required placeholder="e.g. Sri Krishna Stage Decorators" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1" data-i18n="vendorFormCategory">Primary Category</label>
+            <select class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+              <option value="photography">Photography & Film</option>
+              <option value="decorations">Stage & Floral Decor</option>
+              <option value="catering">Catering & Banquets</option>
+              <option value="venues">Convention Halls & Mandapams</option>
+              <option value="makeup">Bridal Makeup & Mehendi</option>
+              <option value="dj_music">Live Orchestra & DJ</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1" data-i18n="vendorFormCity">Operating City</label>
+            <input type="text" required placeholder="e.g. Hyderabad" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1" data-i18n="vendorFormPhone">WhatsApp / Contact Number</label>
+          <input type="tel" required placeholder="+91 98765 43210" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+        </div>
+
+        <div class="p-3 bg-rose-50 rounded-xl border border-rose-100 text-xs text-rose-800 space-y-1">
+          <p class="font-bold">✓ Why list on Veduka AI?</p>
+          <p class="text-[11px] text-rose-700">• Instant digital quotation builder directly to client WhatsApp.</p>
+          <p class="text-[11px] text-rose-700">• Escrow-backed payments: never chase unpaid balances again.</p>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md transition" data-i18n="vendorFormSubmit">
+          Submit Business for Verification (Demo)
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 text-xs py-10 mt-16 border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+      <div class="flex items-center justify-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-rose-600 inline-block"></span>
+        <span class="font-bold text-white text-sm" data-i18n="brandName">Veduka AI</span>
+        <span class="text-gray-500">•</span>
+        <span data-i18n="brandTagline">India's 1st Smart AI Event Marketplace</span>
+      </div>
+      <p class="text-gray-500 max-w-md mx-auto">
+        Empowering wedding couples, event hosts, and local service providers with transparent pricing, regional voice assistance, and AI planning.
+      </p>
+      <div class="pt-2 text-gray-600 text-[11px]">
+        © 2026 Veduka AI Technologies. Built with precision for Andhra Pradesh, Telangana, and Pan-India celebrations.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic (ES Modules) -->
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>

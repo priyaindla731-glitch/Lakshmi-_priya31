@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veduka AI - India's 1st Smart AI Event Marketplace</title>
+  <meta name="description" content="All-in-one AI-powered event marketplace. Transparent itemized pricing, Telugu, Hindi and English voice assistance, AI event creation, and trusted local event service providers.">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+              dark: '#1e1b4b'
+            },
+            festive: {
+              gold: '#f59e0b',
+              amber: '#d97706',
+              marigold: '#ea580c'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="min-h-screen flex flex-col pb-20 md:pb-0">
+
+  <!-- Live SQLite REST API Backend Status Banner -->
+  <div class="bg-gradient-to-r from-emerald-800 via-stone-900 to-rose-900 text-white text-xs px-4 py-1.5 text-center font-medium shadow-xs flex items-center justify-center gap-3">
+    <span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      REST API CONNECTED
+    </span>
+    <span class="hidden sm:inline text-[11px] text-gray-300">
+      SQLite Persistent Database Active • Multilingual Telugu/Hindi/English • Real Quotations, Milestones & QR Check-in
+    </span>
+  </div>
+
+  <!-- Header / Navigation Bar -->
+  <header class="sticky top-0 z-40 glass-nav border-b border-gray-100 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-3">
+      
+      <!-- Brand Logo -->
+      <a href="#" data-nav-view="home" class="flex items-center gap-2.5 group">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-600 to-amber-500 flex items-center justify-center text-white shadow-md group-hover:rotate-6 transition-transform">
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+          </svg>
+        </div>
+        <div>
+          <span id="brand-name" class="text-xl font-extrabold tracking-tight text-gray-900 group-hover:text-rose-600 transition">
+            Veduka AI
+          </span>
+          <span id="brand-tagline" class="block text-[10px] font-semibold text-rose-600 uppercase tracking-wider">
+            Smart Event Marketplace
+          </span>
+        </div>
+      </a>
+
+      <!-- Desktop Navigation Links (Dynamic based on Customer/Seller/Admin Role) -->
+      <nav id="desktop-nav-links" class="hidden md:flex items-center gap-6">
+        <!-- Injected via JavaScript -->
+      </nav>
+
+      <!-- Action Suite: Trilingual, TTS, High-Contrast, Mic & User Auth -->
+      <div class="flex items-center gap-2 sm:gap-2.5">
+        
+        <!-- Trilingual Switcher (EN, TE, HI) -->
+        <div class="bg-gray-100 p-0.5 rounded-full flex items-center text-xs font-semibold border border-gray-200">
+          <button data-lang="en" class="lang-switch-btn px-2.5 py-1 rounded-full text-gray-700 transition">
+            EN
+          </button>
+          <button data-lang="te" class="lang-switch-btn px-2.5 py-1 rounded-full text-gray-700 transition">
+            తెలుగు
+          </button>
+          <button data-lang="hi" class="lang-switch-btn px-2.5 py-1 rounded-full text-gray-700 transition">
+            हिन्दी
+          </button>
+        </div>
+
+        <!-- "Listen to this page" Accessible Audio Button -->
+        <button id="listen-page-btn" 
+          title="Listen to this page aloud (Text-to-Speech)"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition shadow-2xs">
+          <span>🔊</span>
+          <span class="hidden lg:inline text-[11px]">Listen</span>
+        </button>
+
+        <!-- High-Contrast Accessibility Mode Toggle -->
+        <button id="header-contrast-toggle" 
+          title="Toggle High-Contrast Display Mode"
+          class="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center font-bold text-xs border border-gray-200 transition">
+          👁️
+        </button>
+
+        <!-- Voice Assistant Mic Button -->
+        <button id="header-voice-btn" 
+          title="Voice Assistant (Telugu, Hindi, English)"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition shadow-2xs">
+          <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+          </svg>
+          <span class="hidden sm:inline">Voice</span>
+        </button>
+
+        <!-- Notifications Dropdown Trigger -->
+        <button id="header-notif-btn" 
+          onclick="document.getElementById('notif-modal').classList.toggle('hidden');"
+          class="relative w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center text-xs">
+          🔔
+          <span id="notif-count-badge" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white font-bold text-[9px] hidden flex items-center justify-center">0</span>
+        </button>
+
+        <!-- User Auth Action Container -->
+        <div id="header-auth-container">
+          <!-- Populated via JavaScript (User profile pill or Login button) -->
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 1: HOME SCREEN -->
+  <!-- ============================================================= -->
+  <div id="view-home" class="view-pane flex-1">
+    
+    <!-- Hero Section with Dual Entry Points -->
+    <section class="relative overflow-hidden festive-subtle border-b border-rose-100 pt-8 pb-12 sm:pt-14 sm:pb-16">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-rose-200 shadow-2xs mb-4">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-xs font-bold text-gray-700">AI EVENT MARKETPLACE & RUN-SHEET COORDINATION</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div class="lg:col-span-7 space-y-4">
+            <h1 id="hero-title-text" class="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight">
+              Celebrations Planned with Precision & Heart
+            </h1>
+            <p id="hero-sub-text" class="text-sm sm:text-base text-gray-600 max-w-xl leading-relaxed">
+              Discover trusted local vendors, explore 100% itemized upfront pricing, and plan your dream wedding or milestone event with AI in your mother tongue.
+            </p>
+
+            <!-- THE TWO CLEAR ENTRY POINTS -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+              <!-- Entry Point A: Plan or Book an Event -->
+              <button id="hero-plan-btn" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-sm shadow-lg shadow-rose-600/25 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5">
+                <span>🎉</span>
+                <span>Plan or Book an Event</span>
+              </button>
+
+              <!-- Entry Point B: Register My Business / Provide Event Services -->
+              <button id="hero-register-btn" class="px-6 py-3.5 rounded-2xl bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-200 font-bold text-sm shadow-xs flex items-center justify-center gap-2 transition-all">
+                <span>💼</span>
+                <span>Register My Business</span>
+              </button>
+            </div>
+
+            <!-- Spoken Prompt Voice Chip -->
+            <div class="pt-2 flex items-center gap-2">
+              <span class="text-xs text-gray-500 font-medium">Try speaking:</span>
+              <button id="hero-voice-chip" class="text-xs px-3 py-1 bg-white hover:bg-rose-50 text-rose-700 font-bold rounded-full border border-rose-200 transition flex items-center gap-1.5 shadow-xs">
+                <span>🎤</span>
+                <span>"హైదరాబాద్ లో బెస్ట్ క్యాటరింగ్ కావాలి"</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- AI Event Planner Teaser Card -->
+          <div class="lg:col-span-5">
+            <div class="bg-white rounded-3xl p-6 sm:p-7 border-2 border-rose-200/80 shadow-xl relative overflow-hidden">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl font-bold">
+                  ✨
+                </div>
+                <div>
+                  <h3 class="font-bold text-gray-900 text-base">Plan Your Event in 60 Seconds</h3>
+                  <p class="text-xs text-gray-500">Multilingual: Telugu • Hindi • English</p>
+                </div>
+              </div>
+              <p class="text-xs text-gray-600 leading-relaxed mb-4">
+                Tell our AI your occasion, guest count, and city. Receive an itemized budget breakdown, authentic South Asian theme, and recommended providers with 1-click RFQ submission.
+              </p>
+              <button onclick="navigateTo('aiPlanner');" class="w-full py-3.5 px-4 rounded-xl ai-shimmer text-white font-bold text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition flex items-center justify-center gap-2">
+                <span>Launch AI Smart Planner</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Main Content: Featured Providers & Special Offers -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-10">
+      
+      <!-- Special Offer Banner -->
+      <div class="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500 via-rose-600 to-amber-600 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🎁</span>
+          <div>
+            <h4 class="font-black text-base">Muhurtham Festive Season: Flat 10% Off Photography & Decor</h4>
+            <p class="text-xs opacity-90">Use code <strong class="bg-white/20 px-2 py-0.5 rounded font-mono">WEDDING2026</strong> at quotation checkout. Verified local providers only.</p>
+          </div>
+        </div>
+        <button onclick="navigateTo('discover');" class="px-5 py-2.5 bg-white text-gray-900 font-extrabold text-xs rounded-xl hover:bg-gray-100 transition whitespace-nowrap shadow-sm">
+          Claim Offer
+        </button>
+      </div>
+
+      <!-- Featured Providers Section -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-lg font-black text-gray-900 tracking-tight">Verified Local Event Providers</h3>
+            <p class="text-xs text-gray-500">100% transparent itemized rate cards with zero hidden surcharges</p>
+          </div>
+          <button onclick="navigateTo('discover');" class="text-xs font-bold text-rose-600 hover:underline">
+            View All Providers →
+          </button>
+        </div>
+        <div id="home-featured-vendors" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 2: DISCOVER & CATALOG (SEARCH, FILTERS & COMPARISON) -->
+  <!-- ============================================================= -->
+  <div id="view-discover" class="view-pane flex-1 hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      
+      <!-- Search & Location Filter Bar -->
+      <div class="bg-white p-4 rounded-3xl border border-gray-200 shadow-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <div class="sm:col-span-8 relative">
+            <input type="text" id="discover-search-input" placeholder="Search photographers, catering, mandap decor, halls, makeup..." class="w-full pl-4 pr-4 py-3 bg-gray-50 focus:bg-white rounded-2xl border border-gray-200 text-sm outline-none transition" />
+          </div>
+          <div class="sm:col-span-4 relative">
+            <select id="discover-city-select" class="w-full py-3 px-3.5 bg-gray-50 focus:bg-white rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 outline-none cursor-pointer">
+              <option value="All Cities">All Cities (Telangana & AP)</option>
+              <option value="Hyderabad">Hyderabad</option>
+              <option value="Vijayawada">Vijayawada</option>
+              <option value="Visakhapatnam">Visakhapatnam</option>
+              <option value="Warangal">Warangal</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div id="discover-categories-pills" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        <!-- Injected via JavaScript -->
+      </div>
+
+      <!-- Catalog Header & Count -->
+      <div class="flex items-center justify-between">
+        <span id="discover-count-text" class="text-xs text-gray-500 font-semibold"></span>
+      </div>
+
+      <!-- Provider Cards Grid -->
+      <div id="discover-vendors-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Injected via JavaScript -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Floating Comparison Bar -->
+  <div id="floating-compare-bar" class="fixed bottom-20 sm:bottom-6 inset-x-4 sm:inset-x-auto sm:right-6 z-30 hidden bg-gray-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center justify-between gap-4 border border-gray-700">
+    <div>
+      <span class="text-xs font-bold block" id="compare-bar-count">2 Providers Selected</span>
+      <span class="text-[10px] text-gray-400">Side-by-side comparison matrix</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="trigger-compare-modal-btn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition">
+        Compare Now
+      </button>
+      <button onclick="state.comparisonList=[]; renderCompareBar(); renderVendorCatalog();" class="text-gray-400 hover:text-white text-xs px-2">
+        ✕
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 3: AI EVENT ARCHITECT -->
+  <!-- ============================================================= -->
+  <div id="view-ai-planner" class="view-pane flex-1 hidden">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      
+      <div class="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm space-y-6">
+        <div class="border-b pb-4">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 uppercase tracking-wider mb-1">
+            🤖 AI Event Architect
+          </span>
+          <h2 class="text-2xl font-black text-gray-900">Plan Your Entire Celebration in Seconds</h2>
+          <p class="text-xs text-gray-500 mt-1">Our intelligent planner generates itemized budget allocation, theme color concepts, and bundles verified local providers.</p>
+        </div>
+
+        <form id="ai-standalone-planner-form" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Event Occasion</label>
+              <select id="ai-plan-type" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+                <option value="wedding">Pellillu / Grand Wedding (వివాహం)</option>
+                <option value="birthday">Birthday Party Celebration (పుట్టినరోజు)</option>
+                <option value="cradle_ceremony">Cradle Ceremony / Barasala (బారసాల)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Expected Guests</label>
+              <input type="number" id="ai-plan-guests" value="250" min="20" max="5000" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Event Location</label>
+              <select id="ai-plan-city" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+                <option value="Hyderabad">Hyderabad</option>
+                <option value="Vijayawada">Vijayawada</option>
+                <option value="Visakhapatnam">Visakhapatnam</option>
+                <option value="Warangal">Warangal</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Budget Tier</label>
+              <select id="ai-plan-tier" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+                <option value="budget">Smart Budget (Best Value / plate)</option>
+                <option value="premium" selected>Premium Celebration (Balanced Luxury & Elegance)</option>
+                <option value="luxury">Royal Luxury (Grand production, celebrity artists)</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full py-4 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-2xl text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition">
+            ✨ Generate AI Event Blueprint
+          </button>
+        </form>
+
+        <div id="ai-standalone-results" class="hidden"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 4: MY EVENTS & PLANNING WORKSPACE -->
+  <!-- ============================================================= -->
+  <div id="view-my-events" class="view-pane flex-1 hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      
+      <!-- Event Header Card -->
+      <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 uppercase tracking-wider mb-1">
+            Active Event Workspace
+          </span>
+          <h2 id="event-title-display" class="text-2xl font-black text-gray-900">Loading Event...</h2>
+          <p id="event-sub-display" class="text-xs text-gray-500 mt-1"></p>
+        </div>
+        <button onclick="document.getElementById('create-event-modal').classList.remove('hidden'); document.getElementById('create-event-modal').classList.add('flex');" class="px-4 py-2.5 bg-gray-900 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-gray-800 transition">
+          + Create New Event
+        </button>
+      </div>
+
+      <!-- Sub-tab Navigation (Budget, Quotations, Tracking, Runsheet, Guests, Collaborators) -->
+      <div class="flex items-center gap-3 border-b border-gray-200 overflow-x-auto no-scrollbar">
+        <button id="tab-btn-budget" class="tab-btn py-3 px-4 text-xs font-bold border-b-2 border-transparent transition whitespace-nowrap">
+          💰 Budget Manager
+        </button>
+        <button id="tab-btn-quotations" class="tab-btn py-3 px-4 text-xs font-bold border-b-2 border-transparent transition whitespace-nowrap">
+          📄 Quotations Hub
+        </button>
+        <button id="tab-btn-tracking" class="tab-btn py-3 px-4 text-xs font-bold border-b-2 border-transparent transition whitespace-nowrap">
+          📦 Order & Milestone Tracking
+        </button>
+        <button id="tab-btn-runsheet" class="tab-btn py-3 px-4 text-xs font-bold border-b-2 border-transparent transition whitespace-nowrap">
+          ⏱️ Master Run-Sheet
+        </button>
+        <button id="tab-btn-guests" class="tab-btn py-3 px-4 text-xs font-bold border-b-2 border-transparent transition whitespace-nowrap">
+          🎟️ Guest List & QR Check-in
+        </button>
+      </div>
+
+      <!-- TAB 1: BUDGET MANAGER -->
+      <div id="tab-pane-budget" class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="p-5 bg-white rounded-2xl border border-gray-200">
+            <span class="text-xs text-gray-500 block">Total Budget Allocation</span>
+            <span id="budget-total-display" class="text-2xl font-black text-gray-900">₹0</span>
+          </div>
+          <div class="p-5 bg-white rounded-2xl border border-gray-200">
+            <span class="text-xs text-gray-500 block">Total Approved / Spent</span>
+            <span id="budget-spent-display" class="text-2xl font-black text-rose-600">₹0</span>
+          </div>
+        </div>
+        <div id="budget-items-container" class="space-y-3">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- TAB 2: QUOTATIONS HUB -->
+      <div id="tab-pane-quotations" class="space-y-4 hidden">
+        <div id="quotations-list-container" class="space-y-4">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- TAB 3: ORDER & MILESTONES TRACKING -->
+      <div id="tab-pane-tracking" class="space-y-4 hidden">
+        <div id="booking-tracking-container" class="space-y-6">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- TAB 4: MASTER RUN-SHEET -->
+      <div id="tab-pane-runsheet" class="space-y-4 hidden">
+        <div id="runsheet-timeline-container" class="space-y-3">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- TAB 5: GUEST LIST & QR CHECK-IN -->
+      <div id="tab-pane-guests" class="space-y-4 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-200">
+          <div>
+            <h4 class="font-bold text-sm text-gray-900">Guest Invitation Registry & Attendance</h4>
+            <span id="guest-stats-display" class="text-xs text-gray-500"></span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="document.getElementById('add-guest-modal').classList.remove('hidden'); document.getElementById('add-guest-modal').classList.add('flex');" class="px-3 py-2 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-xs">
+              + Add Guest
+            </button>
+            <button onclick="document.getElementById('qr-scanner-modal').classList.remove('hidden'); document.getElementById('qr-scanner-modal').classList.add('flex');" class="px-3 py-2 bg-gray-900 text-white font-bold text-xs rounded-xl shadow-xs">
+              📷 Door Check-in Scanner
+            </button>
+          </div>
+        </div>
+        <div id="guests-list-container" class="space-y-2">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 5: SELLER DASHBOARD -->
+  <!-- ============================================================= -->
+  <div id="view-seller-dashboard" class="view-pane flex-1 hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      
+      <div class="border-b pb-4">
+        <h2 class="text-2xl font-black text-gray-900">Seller Business Hub & Analytics</h2>
+        <p class="text-xs text-gray-500">Manage client inquiries, send itemized digital quotations, and monitor escrow payouts.</p>
+      </div>
+
+      <!-- Metric Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="p-5 bg-white rounded-2xl border border-gray-200 shadow-xs">
+          <span class="text-xs text-gray-500 block">Client Inquiries</span>
+          <span id="seller-inquiries-kpi" class="text-2xl font-black text-gray-900">0</span>
+        </div>
+        <div class="p-5 bg-white rounded-2xl border border-gray-200 shadow-xs">
+          <span class="text-xs text-gray-500 block">Confirmed Bookings</span>
+          <span id="seller-bookings-kpi" class="text-2xl font-black text-emerald-600">0</span>
+        </div>
+        <div class="p-5 bg-white rounded-2xl border border-gray-200 shadow-xs">
+          <span class="text-xs text-gray-500 block">Gross Revenue</span>
+          <span id="seller-revenue-kpi" class="text-2xl font-black text-gray-900">₹0</span>
+        </div>
+        <div class="p-5 bg-white rounded-2xl border border-gray-200 shadow-xs">
+          <span class="text-xs text-gray-500 block">Pending Escrow Payout</span>
+          <span id="seller-pending-kpi" class="text-2xl font-black text-amber-600">₹0</span>
+        </div>
+      </div>
+
+      <!-- Inquiries Stream -->
+      <div>
+        <h3 class="font-bold text-base text-gray-900 mb-3">Incoming Quotation Requests (RFQs)</h3>
+        <div id="seller-recent-inquiries" class="space-y-3">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- VIEW 6: SELLER INVENTORIES -->
+  <div id="view-seller-inventory" class="view-pane flex-1 hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      <div id="seller-inventory-table-container"></div>
+    </div>
+  </div>
+
+  <!-- VIEW 7: SELLER INQUIRIES FULL -->
+  <div id="view-seller-inquiries" class="view-pane flex-1 hidden"></div>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 8: ADMINISTRATOR PANEL -->
+  <!-- ============================================================= -->
+  <div id="view-admin-panel" class="view-pane flex-1 hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      <div class="border-b pb-4">
+        <h2 class="text-2xl font-black text-gray-900">Platform Super Administration</h2>
+        <p class="text-xs text-gray-500">Marketplace moderation, vendor KYC verification, and dispute resolution.</p>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="p-4 bg-white rounded-2xl border border-gray-200">
+          <span class="text-xs text-gray-500">Total Users</span>
+          <span id="admin-users-kpi" class="text-xl font-bold block">0</span>
+        </div>
+        <div class="p-4 bg-white rounded-2xl border border-gray-200">
+          <span class="text-xs text-gray-500">Registered Vendors</span>
+          <span id="admin-vendors-kpi" class="text-xl font-bold block">0</span>
+        </div>
+        <div class="p-4 bg-white rounded-2xl border border-gray-200">
+          <span class="text-xs text-gray-500">Total Bookings</span>
+          <span id="admin-bookings-kpi" class="text-xl font-bold block">0</span>
+        </div>
+        <div class="p-4 bg-white rounded-2xl border border-gray-200">
+          <span class="text-xs text-gray-500">Gross Marketplace Volume</span>
+          <span id="admin-gmv-kpi" class="text-xl font-bold text-rose-600 block">₹0</span>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="font-bold text-sm text-gray-900 mb-3">Vendor KYC & Trust Verification</h3>
+        <div id="admin-vendors-list" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 9: PROFILE & ACCESSIBILITY -->
+  <!-- ============================================================= -->
+  <div id="view-profile" class="view-pane flex-1 hidden">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      
+      <div class="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-sm space-y-6">
+        <div class="border-b pb-4 flex items-center justify-between">
+          <div>
+            <h2 id="profile-name-display" class="text-2xl font-black text-gray-900">User Profile</h2>
+            <p id="profile-email-display" class="text-xs text-gray-500"></p>
+            <span id="profile-role-display" class="inline-block mt-1 font-bold text-xs text-rose-600"></span>
+          </div>
+          <button id="profile-logout-btn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl">
+            Log out
+          </button>
+        </div>
+
+        <!-- Role Switching -->
+        <div class="p-4 bg-rose-50/50 rounded-2xl border border-rose-200 space-y-3">
+          <h4 class="font-bold text-sm text-gray-900">Switch User Role</h4>
+          <p class="text-xs text-gray-600">Switch between planning your celebrations as a customer, managing listings as a vendor, or accessing administrative controls.</p>
+          <div class="flex gap-2">
+            <button id="switch-role-customer-btn" class="px-4 py-2 bg-white text-gray-800 font-bold text-xs rounded-xl border border-gray-200 shadow-2xs">
+              👤 Customer View
+            </button>
+            <button id="switch-role-vendor-btn" class="px-4 py-2 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-2xs">
+              💼 Service Provider View
+            </button>
+          </div>
+        </div>
+
+        <!-- Accessibility Preferences -->
+        <div class="space-y-4 pt-2">
+          <h4 class="font-bold text-sm text-gray-900">Accessibility & Speech Controls</h4>
+          
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
+            <div>
+              <span class="font-bold text-xs text-gray-800 block">High-Contrast Mode</span>
+              <span class="text-[11px] text-gray-500">Dark high-contrast palette for enhanced visual clarity</span>
+            </div>
+            <input type="checkbox" id="high-contrast-toggle" class="w-5 h-5 accent-rose-600 cursor-pointer">
+          </div>
+
+          <div class="p-3 bg-gray-50 rounded-2xl space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-gray-800">Voice Synthesis Speed</span>
+              <span id="speech-speed-val" class="font-bold text-rose-600">1.0x</span>
+            </div>
+            <input type="range" id="speech-speed-slider" min="0.75" max="1.5" step="0.25" value="1.0" class="w-full accent-rose-600 cursor-pointer">
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Mobile Floating Voice Action Button (FAB) -->
+  <button id="fab-voice-btn" 
+    aria-label="Telugu & Hindi Voice Assistant"
+    class="fixed bottom-20 right-4 sm:hidden z-30 w-14 h-14 rounded-full bg-gradient-to-r from-rose-600 to-amber-500 text-white flex items-center justify-center shadow-xl animate-voice-ripple">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+    </svg>
+  </button>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav id="mobile-bottom-nav" class="fixed bottom-0 inset-x-0 z-30 sm:hidden glass-nav border-t border-gray-200 px-4 py-2 flex items-center justify-around text-[10px] font-semibold text-gray-600">
+    <!-- Injected dynamically based on role -->
+  </nav>
+
+  <!-- ============================================================= -->
+  <!-- MODALS -->
+  <!-- ============================================================= -->
+
+  <!-- AUTH MODAL -->
+  <div id="auth-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+      <button id="close-auth-modal" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+
+      <!-- Quick Demo Login Buttons -->
+      <div class="mb-5 p-3.5 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
+        <span class="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">⚡ Quick Demo One-Click Logins:</span>
+        <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
+          <button id="demo-login-customer" class="p-2 bg-white rounded-xl border border-amber-300 font-bold text-amber-900 hover:bg-amber-100">
+            👤 Customer
+          </button>
+          <button id="demo-login-vendor" class="p-2 bg-white rounded-xl border border-amber-300 font-bold text-amber-900 hover:bg-amber-100">
+            💼 Vendor
+          </button>
+          <button id="demo-login-admin" class="p-2 bg-white rounded-xl border border-amber-300 font-bold text-amber-900 hover:bg-amber-100">
+            🛡️ Admin
+          </button>
+        </div>
+      </div>
+
+      <!-- Auth Form Tabs -->
+      <div class="flex border-b mb-4">
+        <button id="auth-tab-login" class="flex-1 py-2 text-xs font-bold border-b-2 border-rose-600 text-rose-600">Log in</button>
+        <button id="auth-tab-register" class="flex-1 py-2 text-xs font-bold text-gray-500">Register</button>
+      </div>
+
+      <form id="auth-login-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Email or Phone Number</label>
+          <input type="text" id="auth-login-id" required placeholder="customer@veduka.ai or 9800000002" class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Password</label>
+          <input type="password" id="auth-login-pass" required placeholder="••••••••" class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+        </div>
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md">
+          Sign In
+        </button>
+      </form>
+
+      <form id="auth-register-form" class="space-y-3 hidden">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
+          <input type="text" id="auth-reg-name" required placeholder="e.g. Ramesh Kumar" class="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Email</label>
+            <input type="email" id="auth-reg-email" placeholder="ramesh@gmail.com" class="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Phone</label>
+            <input type="tel" id="auth-reg-phone" placeholder="9848012345" class="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Password</label>
+          <input type="password" id="auth-reg-pass" required placeholder="••••••••" class="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Register As</label>
+          <select id="auth-reg-role" class="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs font-bold">
+            <option value="customer">Customer (Plan or Book an Event)</option>
+            <option value="vendor">Service Provider (Register My Business)</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md">
+          Create Account
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- VOICE ASSISTANT MODAL (TELUGU, HINDI, ENGLISH) -->
+  <div id="voice-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative text-center">
+      <button id="close-voice-modal" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <h3 class="font-bold text-lg text-gray-900">Veduka Voice Assistant (ఈవెంట్ సహాయకుడు)</h3>
+      <p class="text-xs text-gray-500 mt-1">Speak in Telugu, Hindi, or English</p>
+      
+      <div class="my-6 flex justify-center">
+        <button id="voice-mic-action-btn" class="w-20 h-20 rounded-full bg-gradient-to-r from-rose-600 to-amber-500 text-white flex items-center justify-center text-3xl shadow-xl transition-all">
+          🎤
+        </button>
+      </div>
+
+      <p id="voice-mic-status" class="text-xs font-medium text-gray-600 mb-3">Ready. Speak in Telugu, Hindi, or English.</p>
+      <div id="voice-transcript-output" class="p-3 bg-gray-50 rounded-xl text-xs text-gray-800 font-medium italic min-h-[40px] mb-3">
+        "Speak or click a sample query below..."
+      </div>
+      <div id="voice-ai-answer" class="hidden mb-4"></div>
+
+      <div class="text-left pt-3 border-t space-y-1.5">
+        <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Click to test queries:</span>
+        <button class="sample-voice-chip w-full text-left p-2 rounded-lg bg-rose-50 text-rose-900 text-xs font-medium" data-query="హైదరాబాద్ లో బెస్ట్ క్యాటరింగ్ కావాలి">
+          🗣️ "హైదరాబాద్ లో బెస్ట్ క్యాటరింగ్ కావాలి"
+        </button>
+        <button class="sample-voice-chip w-full text-left p-2 rounded-lg bg-amber-50 text-amber-900 text-xs font-medium" data-query="ఫోటోగ్రఫీ ధరలు చూపించు">
+          🗣️ "ఫోటోగ్రఫీ ధరలు చూపించు"
+        </button>
+        <button class="sample-voice-chip w-full text-left p-2 rounded-lg bg-gray-100 text-gray-800 text-xs font-medium" data-query="Show me mandap stage decor in Hyderabad">
+          🗣️ "Show me mandap stage decor in Hyderabad"
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VENDOR DETAILS & ITEMIZED PACKAGES MODAL -->
+  <div id="vendor-details-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div id="vendor-details-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- VENDOR SIDE-BY-SIDE COMPARISON MODAL -->
+  <div id="vendor-comparison-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button onclick="document.getElementById('vendor-comparison-modal').classList.add('hidden');" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <h3 class="font-bold text-lg text-gray-900 mb-4">Side-by-Side Service Provider Comparison</h3>
+      <div id="vendor-comparison-content"></div>
+    </div>
+  </div>
+
+  <!-- REQUEST QUOTE (RFQ) MODAL -->
+  <div id="rfq-request-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+      <button onclick="document.getElementById('rfq-request-modal').classList.add('hidden');" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <div class="border-b pb-3 mb-4">
+        <h3 class="font-bold text-base text-gray-900">Request Custom Quotation</h3>
+        <p class="text-xs text-rose-600 font-bold" id="rfq-target-vendor-name"></p>
+      </div>
+      <form id="rfq-submission-form" class="space-y-3">
+        <input type="hidden" id="rfq-vendor-id-input">
+        <input type="hidden" id="rfq-category-input">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Event Date</label>
+          <input type="date" id="rfq-date-input" required class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Estimated Guests</label>
+          <input type="number" id="rfq-guests-input" value="200" required class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Specific Requirements & Add-ons</label>
+          <textarea id="rfq-notes-input" rows="3" placeholder="e.g. Need drone photography, pure veg Andhra menu, traditional jasmine floral arch..." class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs"></textarea>
+        </div>
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md">
+          Send RFQ to Provider
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- SELLER QUOTATION BUILDER MODAL -->
+  <div id="seller-quote-builder-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button onclick="document.getElementById('seller-quote-builder-modal').classList.add('hidden');" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <div class="border-b pb-3 mb-4">
+        <span class="text-[10px] font-bold uppercase text-rose-600">Digital Quote Generator</span>
+        <h3 class="font-bold text-base text-gray-900">Build Itemized Quotation for Client</h3>
+      </div>
+      <form id="seller-quote-form" class="space-y-3">
+        <input type="hidden" id="quote-builder-req-id">
+        <input type="hidden" id="quote-builder-event-id">
+        <input type="hidden" id="quote-builder-customer-id">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Subtotal (₹)</label>
+            <input type="number" id="qb-subtotal" value="45000" required class="w-full p-2.5 bg-gray-50 rounded-xl border text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Discount (₹)</label>
+            <input type="number" id="qb-discount" value="2000" class="w-full p-2.5 bg-gray-50 rounded-xl border text-xs">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">GST / Tax (₹)</label>
+            <input type="number" id="qb-tax" value="2150" class="w-full p-2.5 bg-gray-50 rounded-xl border text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Advance Deposit Req. (₹)</label>
+            <input type="number" id="qb-advance" value="15000" class="w-full p-2.5 bg-gray-50 rounded-xl border text-xs">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Terms & Inclusions Note</label>
+          <textarea id="qb-notes" rows="2" class="w-full p-2.5 bg-gray-50 rounded-xl border text-xs">Includes 1 Candid photographer, 1 4K videographer, deliverables in 14 days.</textarea>
+        </div>
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md">
+          Send Official Quote to Customer
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- QR CHECK-IN SCANNER TERMINAL MODAL -->
+  <div id="qr-scanner-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative text-center">
+      <button onclick="document.getElementById('qr-scanner-modal').classList.add('hidden');" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <h3 class="font-bold text-base text-gray-900">Door Attendance QR Scanner Terminal</h3>
+      <p class="text-xs text-gray-500 mt-1 mb-4">Enter or click a guest's QR code token to verify admission</p>
+      
+      <div class="my-4 p-4 bg-gray-900 rounded-2xl flex flex-col items-center justify-center text-white space-y-2">
+        <div class="w-36 h-36 border-2 border-rose-500 rounded-xl flex items-center justify-center text-4xl">
+          📷
+        </div>
+        <span class="text-[10px] text-gray-400">Camera Scanner Ready / Token Input</span>
+      </div>
+
+      <div class="space-y-3">
+        <input type="text" id="qr-scan-input" placeholder="e.g. GUEST-RAO-9848" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-center font-mono font-bold text-sm tracking-wider uppercase">
+        <button id="verify-qr-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md">
+          Verify & Admit Guest
+        </button>
+      </div>
+
+      <div id="qr-verify-result" class="mt-4 hidden"></div>
+    </div>
+  </div>
+
+  <!-- ADD GUEST MODAL -->
+  <div id="add-guest-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+      <button onclick="document.getElementById('add-guest-modal').classList.add('hidden');" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <h3 class="font-bold text-base text-gray-900 mb-3">Add Guest to Invitation Registry</h3>
+      <form id="add-guest-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Guest / Family Name</label>
+          <input type="text" id="guest-name-input" required placeholder="e.g. Suresh Kumar Garu & Family" class="w-full p-2.5 bg-gray-50 rounded-xl border text-xs">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Side</label>
+            <select id="guest-side-input" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+              <option value="groom">Groom Side</option>
+              <option value="bride">Bride Side</option>
+              <option value="vip">VIP Guest</option>
+              <option value="common">Common Friend</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Meal Preference</label>
+            <select id="guest-diet-input" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+              <option value="veg">Pure Veg</option>
+              <option value="non_veg">Non-Veg</option>
+              <option value="jain">Jain</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Guest Count</label>
+            <input type="number" id="guest-count-input" value="2" min="1" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Table / Seating</label>
+            <input type="text" id="guest-table-input" value="Table A1" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+          </div>
+        </div>
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md">
+          Add Guest & Generate QR Pass
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- CREATE EVENT MODAL -->
+  <div id="create-event-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+      <button onclick="document.getElementById('create-event-modal').classList.add('hidden');" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <h3 class="font-bold text-base text-gray-900 mb-3">Create New Celebration Event</h3>
+      <form id="create-event-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Event Title</label>
+          <input type="text" id="new-event-title" required placeholder="e.g. Sravan & Deepthi Sangeet Night" class="w-full p-2.5 bg-gray-50 rounded-xl border text-xs">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Event Type</label>
+            <select id="new-event-type" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+              <option value="wedding">Wedding / Pelli</option>
+              <option value="sangeet">Sangeet & Mehendi</option>
+              <option value="birthday">Birthday Party</option>
+              <option value="cradle_ceremony">Cradle Ceremony (Barasala)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Date</label>
+            <input type="date" id="new-event-date" required class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">City</label>
+            <input type="text" id="new-event-city" value="Hyderabad" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Budget (₹)</label>
+            <input type="number" id="new-event-budget" value="350000" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+          </div>
+        </div>
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md">
+          Save & Launch Workspace
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- NOTIFICATIONS MODAL -->
+  <div id="notif-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+      <button onclick="document.getElementById('notif-modal').classList.add('hidden');" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <h3 class="font-bold text-base text-gray-900 mb-3">Notifications & Activity</h3>
+      <div id="notifs-container" class="space-y-2 max-h-80 overflow-y-auto">
+        <div class="p-3 bg-rose-50 rounded-xl text-xs border border-rose-100">
+          <span class="font-bold text-rose-900 block">Advance Payment Verified</span>
+          <span class="text-rose-700">Your ₹15,000 advance is safely secured in escrow.</span>
+        </div>
+        <div class="p-3 bg-amber-50 rounded-xl text-xs border border-amber-100">
+          <span class="font-bold text-amber-900 block">Quotation Ready</span>
+          <span class="text-amber-700">Kalakriti Stage Decor sent an itemized quotation of ₹38,000.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 text-xs py-10 mt-16 border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+      <div class="flex items-center justify-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-rose-600 inline-block"></span>
+        <span class="font-bold text-white text-sm">Veduka AI</span>
+        <span class="text-gray-500">•</span>
+        <span>India's 1st Smart AI Event Marketplace</span>
+      </div>
+      <p class="text-gray-500 max-w-md mx-auto">
+        Empowering wedding couples, event hosts, and local businesses with transparent pricing, Telugu voice assistance, and AI planning.
+      </p>
+      <div class="pt-2 text-gray-600 text-[11px]">
+        © 2026 Veduka AI Technologies. Built for Telangana, Andhra Pradesh, and Pan-India Celebrations.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic (ES Modules) -->
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Inline event bindings for quick modals -->
+  <script type="module">
+    import { api } from './js/api.js';
+
+    // Handle RFQ Form submission
+    const rfqForm = document.getElementById("rfq-submission-form");
+    if (rfqForm) {
+      rfqForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const vid = document.getElementById("rfq-vendor-id-input").value;
+        const cat = document.getElementById("rfq-category-input").value;
+        const date = document.getElementById("rfq-date-input").value;
+        const guests = document.getElementById("rfq-guests-input").value;
+        const notes = document.getElementById("rfq-notes-input").value;
+
+        try {
+          await api.requestQuotation({
+            event_id: 1, // sample event
+            vendor_id: parseInt(vid),
+            category: cat,
+            event_date: date,
+            guest_count: parseInt(guests),
+            requirements: notes
+          });
+          alert("Quotation request submitted to vendor! You will be notified when the quote is ready.");
+          document.getElementById("rfq-request-modal").classList.add("hidden");
+        } catch (err) {
+          alert(err.message);
+        }
+      };
+    }
+
+    // Handle Seller Quote Builder submission
+    const sqForm = document.getElementById("seller-quote-form");
+    if (sqForm) {
+      sqForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const reqId = document.getElementById("quote-builder-req-id").value;
+        const sub = document.getElementById("qb-subtotal").value;
+        const disc = document.getElementById("qb-discount").value;
+        const tax = document.getElementById("qb-tax").value;
+        const adv = document.getElementById("qb-advance").value;
+        const notes = document.getElementById("qb-notes").value;
+
+        try {
+          await api.respondQuotation(1, {
+            subtotal: parseFloat(sub),
+            discount: parseFloat(disc),
+            tax: parseFloat(tax),
+            advance_required: parseFloat(adv),
+            terms_and_notes: notes,
+            items: [
+              { name: "Candid & Traditional 4K Coverage", qty: 1, price: parseFloat(sub) }
+            ]
+          });
+          alert("Quotation submitted successfully to client!");
+          document.getElementById("seller-quote-builder-modal").classList.add("hidden");
+        } catch (err) {
+          alert(err.message);
+        }
+      };
+    }
+
+    // Handle Add Guest
+    const addGuestForm = document.getElementById("add-guest-form");
+    if (addGuestForm) {
+      addGuestForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("guest-name-input").value;
+        const side = document.getElementById("guest-side-input").value;
+        const diet = document.getElementById("guest-diet-input").value;
+        const count = document.getElementById("guest-count-input").value;
+        const tbl = document.getElementById("guest-table-input").value;
+
+        try {
+          const res = await api.addGuest(1, {
+            full_name: name,
+            side: side,
+            dietary: diet,
+            guest_count: parseInt(count),
+            table_number: tbl
+          });
+          alert(`Guest added! QR token generated: ${res.qr_code_token}`);
+          document.getElementById("add-guest-modal").classList.add("hidden");
+          addGuestForm.reset();
+        } catch (err) {
+          alert(err.message);
+        }
+      };
+    }
+
+    // Handle QR Check-in Terminal Verification
+    const verifyQrBtn = document.getElementById("verify-qr-btn");
+    if (verifyQrBtn) {
+      verifyQrBtn.onclick = async () => {
+        const token = document.getElementById("qr-scan-input").value.trim().toUpperCase();
+        const resDiv = document.getElementById("qr-verify-result");
+        resDiv.classList.remove("hidden");
+
+        try {
+          const res = await api.checkInGuest(token);
+          resDiv.innerHTML = `
+            <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-300 text-emerald-950 text-xs text-left">
+              <span class="font-black text-sm block text-emerald-800">✓ ADMISSION VERIFIED</span>
+              <p class="font-bold mt-1">${res.guest.full_name} (${res.guest.guest_count} Guests)</p>
+              <p class="text-[11px] text-gray-600">Side: ${res.guest.side.toUpperCase()} • Table: ${res.guest.table_number}</p>
+              <span class="inline-block mt-1 font-mono text-[10px] text-emerald-700">${res.message}</span>
+            </div>
+          `;
+        } catch (err) {
+          resDiv.innerHTML = `
+            <div class="p-3 bg-red-50 rounded-xl border border-red-200 text-red-800 text-xs font-bold">
+              ✗ Invalid QR Code. Guest not found on event guest list.
+            </div>
+          `;
+        }
+      };
+    }
+
+    // Handle Create Event
+    const createEvForm = document.getElementById("create-event-form");
+    if (createEvForm) {
+      createEvForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const title = document.getElementById("new-event-title").value;
+        const type = document.getElementById("new-event-type").value;
+        const date = document.getElementById("new-event-date").value;
+        const city = document.getElementById("new-event-city").value;
+        const budget = document.getElementById("new-event-budget").value;
+
+        try {
+          await api.createEvent({
+            title: title,
+            event_type: type,
+            event_date: date,
+            city: city,
+            total_budget: parseFloat(budget)
+          });
+          alert("Event created successfully! Switched to your new event workspace.");
+          document.getElementById("create-event-modal").classList.add("hidden");
+          window.location.reload();
+        } catch (err) {
+          alert(err.message);
+        }
+      };
+    }
+  </script>
+
+</body>
+</html>

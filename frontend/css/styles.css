@@ -1,0 +1,138 @@
+/* Veduka AI - Complete Design System & Accessibility */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap');
+
+:root {
+  --brand-primary: #e11d48;
+  --brand-primary-hover: #be123c;
+  --brand-gold: #f59e0b;
+  --brand-dark: #1e1b4b;
+  --bg-canvas: #faf8f5;
+  --text-main: #1f2937;
+  --card-bg: #ffffff;
+  --border-subtle: #f3f0ea;
+}
+
+/* High Contrast Mode for Visual Accessibility */
+body.high-contrast {
+  --bg-canvas: #000000;
+  --text-main: #ffffff;
+  --card-bg: #121212;
+  --border-subtle: #ffd700;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+body.high-contrast .bg-white {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+  border-color: #ffd700 !important;
+}
+
+body.high-contrast .text-gray-900,
+body.high-contrast .text-gray-800,
+body.high-contrast .text-gray-700,
+body.high-contrast .text-gray-600 {
+  color: #ffffff !important;
+}
+
+body.high-contrast .text-gray-500,
+body.high-contrast .text-gray-400 {
+  color: #e5e7eb !important;
+}
+
+body.high-contrast .bg-gray-50,
+body.high-contrast .bg-gray-100 {
+  background-color: #1e1e1e !important;
+}
+
+body.high-contrast button {
+  border: 1px solid #ffd700 !important;
+}
+
+/* General Typography & Reset */
+body {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Telugu', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar Hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassmorphism & Header */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+body.high-contrast .glass-nav {
+  background: #000000 !important;
+  border-bottom: 2px solid #ffd700 !important;
+}
+
+/* Festive Indian Gradients */
+.festive-gradient {
+  background: linear-gradient(135deg, #e11d48 0%, #ea580c 50%, #d97706 100%);
+}
+
+.festive-subtle {
+  background: linear-gradient(135deg, #fff1f2 0%, #fffbeb 100%);
+}
+
+/* Pulsing Voice Microphone Ripple */
+@keyframes voice-ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 22px rgba(225, 29, 72, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
+  }
+}
+
+.animate-voice-ripple {
+  animation: voice-ripple 1.8s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+/* Shimmer Highlight for AI Badges */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.ai-shimmer {
+  background: linear-gradient(90deg, #e11d48 0%, #f59e0b 50%, #e11d48 100%);
+  background-size: 200% 100%;
+  animation: shimmer 4s infinite linear;
+}
+
+/* Tab Navigation Transitions */
+.tab-btn.active {
+  color: #e11d48;
+  border-bottom: 2px solid #e11d48;
+}
+
+body.high-contrast .tab-btn.active {
+  color: #ffd700 !important;
+  border-bottom: 3px solid #ffd700 !important;
+}
+
+/* QR Code Scanner Overlay */
+.qr-scanner-box {
+  width: 240px;
+  height: 240px;
+  border: 3px solid #e11d48;
+  position: relative;
+  border-radius: 16px;
+  box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+}
