@@ -63,6 +63,10 @@ export const api = {
     return this.request("/api/auth/login", { method: "POST", body: payload });
   },
 
+  async logout() {
+    return this.request("/api/auth/logout", { method: "POST" });
+  },
+
   async getMe() {
     return this.request("/api/auth/me", { method: "GET" });
   },

@@ -4,13 +4,15 @@ import uuid
 import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from backend.database import get_db, init_db, hash_password
-from backend.auth import create_token, require_auth, get_current_user
+from werkzeug.middleware.proxy_fix import ProxyFix
+from backend.database import get_db, init_db, hash_password, verify_password, is_legacy_password_hash
+from backend.auth import create_token, require_auth, decode_token, revoke_token, rate_limit_auth_attempt
 
 # Ensure database is initialized
 init_db()
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="")
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 CORS(app)
 
 # Helper to serialize sqlite3.Row objects to dict
@@ -20,24 +22,89 @@ def row_to_dict(row):
 def rows_to_list(rows):
     return [dict(r) for r in rows]
 
+def _request_data():
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+def _auth_rate_limit_response(action, limit):
+    retry_after = rate_limit_auth_attempt(action, limit)
+    if not retry_after:
+        return None
+    response = jsonify({"error": "Too many attempts. Please wait before trying again."})
+    response.status_code = 429
+    response.headers["Retry-After"] = str(retry_after)
+    return response
+
+def _event_access(conn, current_user, event_id, allow_vendor=False, edit=False):
+    event = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+    if not event:
+        return None, (jsonify({"error": "Event not found"}), 404)
+    if current_user["role"] == "admin" or event["customer_id"] == current_user["id"]:
+        return event, None
+
+    email = (current_user.get("email") or "").lower()
+    collaborator = conn.execute(
+        "SELECT permission FROM event_collaborators WHERE event_id = ? AND LOWER(collaborator_email) = ?",
+        (event_id, email),
+    ).fetchone() if email else None
+    if collaborator and (not edit or collaborator["permission"] == "co_planner_edit"):
+        return event, None
+
+    if allow_vendor and current_user["role"] == "vendor":
+        vendor = conn.execute(
+            "SELECT id FROM vendor_profiles WHERE user_id = ?",
+            (current_user["id"],),
+        ).fetchone()
+        if vendor:
+            booking = conn.execute(
+                "SELECT 1 FROM bookings WHERE event_id = ? AND vendor_id = ? AND booking_status = 'confirmed'",
+                (event_id, vendor["id"]),
+            ).fetchone()
+            if booking:
+                return event, None
+
+    return None, (jsonify({"error": "You do not have permission to access this event."}), 403)
+
 # -------------------------------------------------------------
 # 1. AUTHENTICATION & ONBOARDING
 # -------------------------------------------------------------
 @app.route("/api/auth/register", methods=["POST"])
 def register():
-    data = request.json or {}
+    limited = _auth_rate_limit_response("register", 5)
+    if limited:
+        return limited
+
+    data = _request_data()
+    fields = ("email", "phone", "password", "full_name", "role", "preferred_language")
+    if any(key in data and not isinstance(data[key], str) for key in fields):
+        return jsonify({"error": "Registration fields must be text values."}), 400
     email = data.get("email", "").strip().lower()
     phone = data.get("phone", "").strip()
     password = data.get("password", "").strip()
     full_name = data.get("full_name", "").strip()
-    role = data.get("role", "customer").lower()
+    role = data.get("role", "customer").strip().lower()
     lang = data.get("preferred_language", "en")
 
     if not full_name or not password or (not email and not phone):
         return jsonify({"error": "Full name, password, and email or phone are required."}), 400
+    if len(full_name) > 120 or len(email) > 254 or len(phone) > 32:
+        return jsonify({"error": "One or more registration fields exceed the allowed length."}), 400
+    if len(password) < 12 or len(password) > 1024:
+        return jsonify({"error": "Password must be at least 12 characters long."}), 400
+
+    business_name = data.get("business_name") or full_name
+    category = data.get("category") or "photography"
+    cities = data.get("cities") or "Hyderabad"
+    if role == "vendor":
+        if not all(isinstance(value, str) for value in (business_name, category, cities)):
+            return jsonify({"error": "Vendor profile fields must be text values."}), 400
+        if len(business_name) > 160 or len(category) > 80 or len(cities) > 255:
+            return jsonify({"error": "One or more vendor profile fields exceed the allowed length."}), 400
 
     if role not in ["customer", "vendor"]:
-        role = "customer"
+        return jsonify({"error": "Registration is available for customer or vendor accounts only."}), 400
+    if lang not in ("en", "te", "hi"):
+        return jsonify({"error": "Unsupported preferred language."}), 400
 
     conn = get_db()
     cursor = conn.cursor()
@@ -63,9 +130,6 @@ def register():
 
     # If vendor, create initial vendor profile
     if role == "vendor":
-        business_name = data.get("business_name") or full_name
-        category = data.get("category") or "photography"
-        cities = data.get("cities") or "Hyderabad"
         cursor.execute('''
         INSERT INTO vendor_profiles (user_id, business_name, category, cities, bio_en)
         VALUES (?, ?, ?, ?, ?)
@@ -96,32 +160,58 @@ def register():
 
 @app.route("/api/auth/login", methods=["POST"])
 def login():
-    data = request.json or {}
-    identifier = data.get("identifier", "").strip().lower() # email or phone
-    password = data.get("password", "").strip()
+    limited = _auth_rate_limit_response("login", 10)
+    if limited:
+        return limited
+
+    data = _request_data()
+    identifier = data.get("identifier", "")
+    password = data.get("password", "")
+    if not isinstance(identifier, str) or not isinstance(password, str):
+        return jsonify({"error": "Please provide your email/phone and password."}), 400
+    identifier = identifier.strip().lower()
+    password = password.strip()
 
     if not identifier or not password:
         return jsonify({"error": "Please provide your email/phone and password."}), 400
+    if len(identifier) > 254 or len(password) > 1024:
+        return jsonify({"error": "Please provide your email/phone and password."}), 400
 
-    pwd_hash = hash_password(password)
     conn = get_db()
     user = conn.execute('''
-    SELECT id, email, phone, full_name, role, preferred_language, high_contrast, speech_speed 
-    FROM users 
-    WHERE (LOWER(email) = ? OR phone = ?) AND password_hash = ?
-    ''', (identifier, identifier, pwd_hash)).fetchone()
+    SELECT id, email, phone, password_hash, full_name, role, preferred_language, high_contrast, speech_speed
+    FROM users
+    WHERE LOWER(email) = ? OR phone = ?
+    ''', (identifier, identifier)).fetchone()
+    if user and verify_password(user["password_hash"], password) and is_legacy_password_hash(user["password_hash"]):
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(password), user["id"]))
+        conn.commit()
+    if not user or not verify_password(user["password_hash"], password):
+        user = None
     conn.close()
 
     if not user:
         return jsonify({"error": "Invalid login credentials. Please check your phone/email and password."}), 401
 
     u = dict(user)
+    u.pop("password_hash", None)
     token = create_token(u["id"], u["role"], u["email"] or u["phone"], u["full_name"])
     return jsonify({
         "message": "Login successful!",
         "token": token,
         "user": u
     })
+
+@app.route("/api/auth/logout", methods=["POST"])
+@require_auth()
+def logout(current_user):
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1]
+    payload = decode_token(token)
+    if not payload:
+        return jsonify({"error": "Authentication token is missing or invalid. Please log in."}), 401
+    revoke_token(token, payload)
+    return jsonify({"message": "Logged out successfully."})
 
 @app.route("/api/auth/me", methods=["GET"])
 @require_auth()
@@ -141,12 +231,17 @@ def get_me(current_user):
 @app.route("/api/auth/switch-role", methods=["POST"])
 @require_auth()
 def switch_role(current_user):
-    data = request.json or {}
-    new_role = data.get("role", "customer").lower()
-    if new_role not in ["customer", "vendor", "admin"]:
+    data = _request_data()
+    new_role = data.get("role", "customer")
+    if not isinstance(new_role, str):
         return jsonify({"error": "Invalid role"}), 400
-    if new_role == "admin" and current_user["role"] != "admin":
-        return jsonify({"error": "Only administrators can assign the admin role."}), 403
+    new_role = new_role.lower()
+    if new_role == "admin":
+        return jsonify({"error": "Administrator access can only be assigned by an authorized administrator."}), 403
+    if new_role not in ["customer", "vendor"]:
+        return jsonify({"error": "Invalid role"}), 400
+    if current_user["role"] == "admin":
+        return jsonify({"error": "Administrator accounts cannot switch roles."}), 403
 
     conn = get_db()
     conn.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, current_user["id"]))
@@ -222,7 +317,9 @@ def list_vendors():
     min_rating = request.args.get("min_rating", type=float)
 
     query = '''
-    SELECT vp.*, u.email, u.phone 
+    SELECT vp.id, vp.business_name, vp.category, vp.cities, vp.service_radius_km,
+           vp.kyc_verified, vp.rating_avg, vp.review_count, vp.bio_en, vp.bio_te,
+           vp.bio_hi, vp.image_url, vp.response_time
     FROM vendor_profiles vp
     JOIN users u ON vp.user_id = u.id
     WHERE 1=1
@@ -278,10 +375,10 @@ def list_vendors():
 def get_vendor_details(vendor_id):
     conn = get_db()
     vp = conn.execute('''
-    SELECT vp.*, u.email, u.phone 
-    FROM vendor_profiles vp
-    JOIN users u ON vp.user_id = u.id
-    WHERE vp.id = ?
+    SELECT id, business_name, category, cities, service_radius_km, kyc_verified,
+           rating_avg, review_count, bio_en, bio_te, bio_hi, image_url,
+           portfolio_json, terms_and_conditions, response_time
+    FROM vendor_profiles WHERE id = ?
     ''', (vendor_id,)).fetchone()
 
     if not vp:
@@ -309,9 +406,8 @@ def get_vendor_details(vendor_id):
 
     # Reviews
     reviews = conn.execute('''
-    SELECT r.*, u.full_name as customer_name
+    SELECT r.id, r.rating, r.review_text, r.verified_booking, r.created_at
     FROM reviews r
-    JOIN users u ON r.customer_id = u.id
     WHERE r.vendor_id = ?
     ORDER BY r.created_at DESC
     ''', (vendor_id,)).fetchall()
@@ -330,7 +426,11 @@ def compare_vendors():
     conn = get_db()
     comparison = []
     for vid in vendor_ids[:4]: # compare up to 4
-        vp = conn.execute("SELECT * FROM vendor_profiles WHERE id = ?", (vid,)).fetchone()
+        vp = conn.execute('''
+        SELECT id, business_name, category, cities, rating_avg, review_count, image_url,
+               terms_and_conditions
+        FROM vendor_profiles WHERE id = ?
+        ''', (vid,)).fetchone()
         if not vp:
             continue
         v_dict = dict(vp)
@@ -540,50 +640,79 @@ def get_event_details(current_user, event_id):
         conn.close()
         return jsonify({"error": "Event not found"}), 404
 
-    # Authorization check: Owner, Admin, or invited Collaborator
-    if current_user["role"] != "admin" and ev["customer_id"] != current_user["id"]:
-        user_email = current_user.get("email") or ""
-        is_collab = conn.execute("SELECT id FROM event_collaborators WHERE event_id = ? AND collaborator_email = ?", (event_id, user_email)).fetchone()
-        is_vendor = conn.execute("SELECT id FROM bookings WHERE event_id = ? AND vendor_id IN (SELECT id FROM vendor_profiles WHERE user_id = ?)", (event_id, current_user["id"])).fetchone()
-        if not is_collab and not is_vendor:
-            conn.close()
-            return jsonify({"error": "Unauthorized: You do not have permission to access this event workspace."}), 403
+    _, access_error = _event_access(conn, current_user, event_id, allow_vendor=True)
+    if access_error:
+        conn.close()
+        return access_error
 
     event = dict(ev)
+    vendor_view = current_user["role"] == "vendor" and ev["customer_id"] != current_user["id"]
+    if vendor_view:
+        for field in ("customer_id", "total_budget", "special_notes", "color_palette", "dietary_preference"):
+            event.pop(field, None)
 
     # Budget
-    budget_items = conn.execute("SELECT * FROM budget_items WHERE event_id = ?", (event_id,)).fetchall()
+    budget_items = [] if vendor_view else conn.execute(
+        "SELECT * FROM budget_items WHERE event_id = ?", (event_id,)
+    ).fetchall()
     event["budget_breakdown"] = rows_to_list(budget_items)
 
     # Bookings
-    bookings = conn.execute('''
+    booking_query = '''
     SELECT b.*, vp.business_name, vp.category, vp.image_url 
     FROM bookings b
     JOIN vendor_profiles vp ON b.vendor_id = vp.id
     WHERE b.event_id = ?
-    ''', (event_id,)).fetchall()
+    '''
+    booking_params = [event_id]
+    if vendor_view:
+        booking_query += " AND b.vendor_id IN (SELECT id FROM vendor_profiles WHERE user_id = ?)"
+        booking_params.append(current_user["id"])
+    bookings = conn.execute(booking_query, booking_params).fetchall()
     event["bookings"] = rows_to_list(bookings)
+    if vendor_view:
+        for booking in event["bookings"]:
+            booking.pop("customer_id", None)
 
     # Quotations
-    quotes = conn.execute('''
+    quote_query = '''
     SELECT q.*, vp.business_name, vp.category, vp.image_url 
     FROM quotations q
     JOIN vendor_profiles vp ON q.vendor_id = vp.id
     WHERE q.event_id = ?
     ORDER BY q.created_at DESC
-    ''', (event_id,)).fetchall()
+    '''
+    quote_params = [event_id]
+    if vendor_view:
+        quote_query = quote_query.replace(
+            "ORDER BY q.created_at DESC",
+            "AND q.vendor_id IN (SELECT id FROM vendor_profiles WHERE user_id = ?) ORDER BY q.created_at DESC",
+        )
+        quote_params.append(current_user["id"])
+    quotes = conn.execute(quote_query, quote_params).fetchall()
     event["quotations"] = rows_to_list(quotes)
+    if vendor_view:
+        for quote in event["quotations"]:
+            quote.pop("customer_id", None)
 
     # Run-sheet
     runsheet = conn.execute("SELECT * FROM event_runsheet WHERE event_id = ? ORDER BY time_slot ASC", (event_id,)).fetchall()
     event["runsheet"] = rows_to_list(runsheet)
+    if vendor_view:
+        for item in event["runsheet"]:
+            item.pop("contact_name", None)
+            item.pop("contact_phone", None)
 
     # Guests
-    guests = conn.execute("SELECT * FROM guests WHERE event_id = ? ORDER BY id ASC", (event_id,)).fetchall()
+    guests = [] if vendor_view else conn.execute(
+        "SELECT * FROM guests WHERE event_id = ? ORDER BY id ASC", (event_id,)
+    ).fetchall()
     event["guests"] = rows_to_list(guests)
 
     # Collaborators
-    collabs = conn.execute("SELECT * FROM event_collaborators WHERE event_id = ?", (event_id,)).fetchall()
+    collabs = [] if vendor_view else conn.execute(
+        "SELECT * FROM event_collaborators WHERE event_id = ?", (event_id,)
+    ).fetchall()
     event["collaborators"] = rows_to_list(collabs)
 
     conn.close()
@@ -607,6 +736,18 @@ def request_quotation(current_user):
         return jsonify({"error": "Event ID and Vendor ID are required."}), 400
 
     conn = get_db()
+    event = conn.execute("SELECT customer_id FROM events WHERE id = ?", (event_id,)).fetchone()
+    if not event:
+        conn.close()
+        return jsonify({"error": "Event not found"}), 404
+    if event["customer_id"] != current_user["id"]:
+        conn.close()
+        return jsonify({"error": "You can only request quotations for your own events."}), 403
+    vendor = conn.execute("SELECT user_id, business_name FROM vendor_profiles WHERE id = ?", (vendor_id,)).fetchone()
+    if not vendor:
+        conn.close()
+        return jsonify({"error": "Vendor not found"}), 404
+
     cursor = conn.cursor()
     cursor.execute('''
     INSERT INTO quotation_requests (event_id, customer_id, vendor_id, category, event_date, guest_count, requirements)
@@ -615,12 +756,10 @@ def request_quotation(current_user):
     req_id = cursor.lastrowid
 
     # Notify vendor
-    v_user = cursor.execute("SELECT user_id, business_name FROM vendor_profiles WHERE id = ?", (vendor_id,)).fetchone()
-    if v_user:
-        cursor.execute('''
-        INSERT INTO notifications (user_id, title, message, category)
-        VALUES (?, 'New Quotation Request!', ?, 'quotation')
-        ''', (v_user["user_id"], f"Customer {current_user['full_name']} requested a custom quote for {category}."))
+    cursor.execute('''
+    INSERT INTO notifications (user_id, title, message, category)
+    VALUES (?, 'New Quotation Request!', ?, 'quotation')
+    ''', (vendor["user_id"], f"Customer {current_user['full_name']} requested a custom quote for {category}."))
 
     conn.commit()
     conn.close()
@@ -652,7 +791,7 @@ def respond_quotation(current_user, quote_id):
 
     # Authorization: Ensure vendor owns this quote
     vp = cursor.execute("SELECT id FROM vendor_profiles WHERE user_id = ?", (current_user["id"],)).fetchone()
-    if not vp or (q["vendor_id"] != vp["id"] and current_user["role"] != "admin"):
+    if not vp or q["vendor_id"] != vp["id"]:
         conn.close()
         return jsonify({"error": "Unauthorized: You can only respond to quotations sent to your business."}), 403
 
@@ -802,7 +941,21 @@ def get_booking_details(current_user, booking_id):
         conn.close()
         return jsonify({"error": "Booking not found"}), 404
 
+    vendor = conn.execute(
+        "SELECT id FROM vendor_profiles WHERE user_id = ?",
+        (current_user["id"],),
+    ).fetchone() if current_user["role"] == "vendor" else None
+    if (
+        current_user["role"] != "admin"
+        and current_user["id"] != b["customer_id"]
+        and (not vendor or vendor["id"] != b["vendor_id"])
+    ):
+        conn.close()
+        return jsonify({"error": "You do not have permission to access this booking."}), 403
+
     booking = dict(b)
+    if current_user["role"] == "vendor":
+        booking.pop("customer_id", None)
     milestones = conn.execute("SELECT * FROM booking_milestones WHERE booking_id = ? ORDER BY stage_number ASC", (booking_id,)).fetchall()
     booking["milestones"] = rows_to_list(milestones)
 
@@ -824,7 +977,10 @@ def update_milestone_status(current_user, booking_id, stage):
         conn.close()
         return jsonify({"error": "Booking not found"}), 404
 
-    vp = cursor.execute("SELECT id FROM vendor_profiles WHERE user_id = ?", (current_user["id"],)).fetchone()
+    vp = cursor.execute(
+        "SELECT id FROM vendor_profiles WHERE user_id = ?",
+        (current_user["id"],),
+    ).fetchone() if current_user["role"] == "vendor" else None
     v_id = vp["id"] if vp else None
     if current_user["role"] != "admin" and current_user["id"] != b["customer_id"] and v_id != b["vendor_id"]:
         conn.close()
@@ -866,7 +1022,11 @@ def cancel_booking(current_user, booking_id):
         conn.close()
         return jsonify({"error": "Booking not found"}), 404
 
-    if current_user["role"] != "admin" and current_user["id"] != b["customer_id"] and current_user["id"] != b["vendor_user_id"]:
+    if (
+        current_user["role"] != "admin"
+        and current_user["id"] != b["customer_id"]
+        and (current_user["role"] != "vendor" or current_user["id"] != b["vendor_user_id"])
+    ):
         conn.close()
         return jsonify({"error": "Unauthorized: You can only cancel your own bookings."}), 403
 
@@ -924,6 +1084,10 @@ def cancel_booking(current_user, booking_id):
 @require_auth()
 def list_guests(current_user, event_id):
     conn = get_db()
+    _, access_error = _event_access(conn, current_user, event_id)
+    if access_error:
+        conn.close()
+        return access_error
     guests = conn.execute("SELECT * FROM guests WHERE event_id = ? ORDER BY id ASC", (event_id,)).fetchall()
     conn.close()
     return jsonify({"guests": rows_to_list(guests)})
@@ -931,7 +1095,7 @@ def list_guests(current_user, event_id):
 @app.route("/api/events/<int:event_id>/guests", methods=["POST"])
 @require_auth(required_role="customer")
 def add_guest(current_user, event_id):
-    data = request.json or {}
+    data = _request_data()
     name = data.get("full_name", "").strip()
     phone = data.get("phone", "").strip()
     side = data.get("side", "common")
@@ -945,6 +1109,10 @@ def add_guest(current_user, event_id):
     token = f"VEDUKA-{uuid.uuid4().hex[:8].upper()}"
 
     conn = get_db()
+    _, access_error = _event_access(conn, current_user, event_id, edit=True)
+    if access_error:
+        conn.close()
+        return access_error
     cursor = conn.cursor()
     cursor.execute('''
     INSERT INTO guests (event_id, full_name, phone, side, dietary, guest_count, table_number, qr_code_token)
@@ -962,9 +1130,13 @@ def add_guest(current_user, event_id):
     }), 201
 
 @app.route("/api/guests/check-in", methods=["POST"])
-def check_in_guest():
-    data = request.json or {}
-    token = data.get("qr_code_token", "").strip().upper()
+@require_auth()
+def check_in_guest(current_user):
+    data = _request_data()
+    token = data.get("qr_code_token", "")
+    if not isinstance(token, str):
+        return jsonify({"error": "QR token is required."}), 400
+    token = token.strip().upper()
 
     if not token:
         return jsonify({"error": "QR token is required."}), 400
@@ -977,26 +1149,46 @@ def check_in_guest():
         conn.close()
         return jsonify({"valid": False, "message": "Invalid QR code token. Guest not found on event guest list."}), 404
 
+    _, access_error = _event_access(
+        conn, current_user, guest["event_id"], allow_vendor=True, edit=True
+    )
+    if access_error:
+        conn.close()
+        return access_error
+
     g = dict(guest)
+    check_in_guest = {
+        key: g[key]
+        for key in ("id", "full_name", "guest_count", "side", "table_number", "checked_in", "checked_in_at")
+    }
     if g["checked_in"] == 1:
         conn.close()
         return jsonify({
             "valid": True,
             "already_checked_in": True,
-            "guest": g,
+            "guest": check_in_guest,
             "message": f"Already checked in at {g['checked_in_at']}."
         })
 
-    cursor.execute("UPDATE guests SET checked_in = 1, checked_in_at = CURRENT_TIMESTAMP WHERE id = ?", (g["id"],))
+    cursor.execute(
+        "UPDATE guests SET checked_in = 1, checked_in_at = CURRENT_TIMESTAMP WHERE id = ? AND checked_in = 0",
+        (g["id"],),
+    )
+    already_checked_in = cursor.rowcount == 0
     conn.commit()
 
     updated = cursor.execute("SELECT * FROM guests WHERE id = ?", (g["id"],)).fetchone()
     conn.close()
+    updated_guest = dict(updated)
+    check_in_guest.update({
+        "checked_in": updated_guest["checked_in"],
+        "checked_in_at": updated_guest["checked_in_at"],
+    })
 
     return jsonify({
         "valid": True,
-        "already_checked_in": False,
-        "guest": dict(updated),
+        "already_checked_in": already_checked_in,
+        "guest": check_in_guest,
         "message": f"Check-in verified! Welcome {g['full_name']} ({g['guest_count']} guests, {g['side']} side, {g['table_number']})."
     })
 

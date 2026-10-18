@@ -35,22 +35,15 @@
   <!-- Custom Styles -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="min-h-screen flex flex-col pb-20 md:pb-0">
+<body class="min-h-screen flex flex-col pb-20 lg:pb-0">
 
-  <!-- Live SQLite REST API Backend Status Banner -->
-  <div class="bg-gradient-to-r from-emerald-800 via-stone-900 to-rose-900 text-white text-xs px-4 py-1.5 text-center font-medium shadow-xs flex items-center justify-center gap-3">
-    <span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
-      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-      REST API CONNECTED
-    </span>
-    <span class="hidden sm:inline text-[11px] text-gray-300">
-      SQLite Persistent Database Active • Multilingual Telugu/Hindi/English • Real Quotations, Milestones & QR Check-in
-    </span>
+  <div class="brand-ribbon px-4 py-2 text-center text-xs font-semibold">
+    Plan thoughtfully <span aria-hidden="true">•</span> Find trusted local vendors <span aria-hidden="true">•</span> Celebrate with confidence
   </div>
 
   <!-- Header / Navigation Bar -->
   <header class="sticky top-0 z-40 glass-nav border-b border-gray-100 shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-3">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[4.5rem] flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-4 gap-y-2 py-2">
       
       <!-- Brand Logo -->
       <a href="#" data-nav-view="home" class="flex items-center gap-2.5 group">
@@ -70,22 +63,22 @@
       </a>
 
       <!-- Desktop Navigation Links (Dynamic based on Customer/Seller/Admin Role) -->
-      <nav id="desktop-nav-links" class="hidden md:flex items-center gap-6">
+      <nav id="desktop-nav-links" class="hidden lg:flex items-center gap-4 xl:gap-6">
         <!-- Injected via JavaScript -->
       </nav>
 
       <!-- Action Suite: Trilingual, TTS, High-Contrast, Mic & User Auth -->
-      <div class="flex items-center gap-2 sm:gap-2.5">
+      <div class="header-action-suite order-3 lg:order-none flex w-full lg:w-auto items-center justify-between lg:justify-end gap-1.5 sm:gap-2.5">
         
         <!-- Trilingual Switcher (EN, TE, HI) -->
-        <div class="bg-gray-100 p-0.5 rounded-full flex items-center text-xs font-semibold border border-gray-200">
-          <button data-lang="en" class="lang-switch-btn px-2.5 py-1 rounded-full text-gray-700 transition">
+        <div class="bg-gray-100 p-0.5 rounded-full flex items-center text-[10px] sm:text-xs font-semibold border border-gray-200">
+          <button data-lang="en" class="lang-switch-btn px-2 sm:px-2.5 py-1.5 sm:py-1 rounded-full text-gray-700 transition">
             EN
           </button>
-          <button data-lang="te" class="lang-switch-btn px-2.5 py-1 rounded-full text-gray-700 transition">
+          <button data-lang="te" class="lang-switch-btn px-2 sm:px-2.5 py-1.5 sm:py-1 rounded-full text-gray-700 transition">
             తెలుగు
           </button>
-          <button data-lang="hi" class="lang-switch-btn px-2.5 py-1 rounded-full text-gray-700 transition">
+          <button data-lang="hi" class="lang-switch-btn px-2 sm:px-2.5 py-1.5 sm:py-1 rounded-full text-gray-700 transition">
             हिन्दी
           </button>
         </div>
@@ -93,7 +86,7 @@
         <!-- "Listen to this page" Accessible Audio Button -->
         <button id="listen-page-btn" 
           title="Listen to this page aloud (Text-to-Speech)"
-          class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition shadow-2xs">
+          class="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition shadow-2xs">
           <span>🔊</span>
           <span class="hidden lg:inline text-[11px]">Listen</span>
         </button>
@@ -101,14 +94,14 @@
         <!-- High-Contrast Accessibility Mode Toggle -->
         <button id="header-contrast-toggle" 
           title="Toggle High-Contrast Display Mode"
-          class="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center font-bold text-xs border border-gray-200 transition">
+          class="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center font-bold text-xs border border-gray-200 transition" aria-label="Toggle high-contrast display mode">
           👁️
         </button>
 
         <!-- Voice Assistant Mic Button -->
         <button id="header-voice-btn" 
           title="Voice Assistant (Telugu, Hindi, English)"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition shadow-2xs">
+          class="w-9 h-9 sm:w-auto sm:h-auto flex items-center justify-center gap-1.5 px-0 sm:px-3 sm:py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition shadow-2xs" aria-label="Voice Assistant (Telugu, Hindi, English)">
           <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
           </svg>
@@ -118,7 +111,7 @@
         <!-- Notifications Dropdown Trigger -->
         <button id="header-notif-btn" 
           onclick="document.getElementById('notif-modal').classList.toggle('hidden');"
-          class="relative w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center text-xs">
+          class="relative w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center text-xs" aria-label="Notifications">
           🔔
           <span id="notif-count-badge" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white font-bold text-[9px] hidden flex items-center justify-center">0</span>
         </button>
@@ -138,42 +131,36 @@
   <div id="view-home" class="view-pane flex-1">
     
     <!-- Hero Section with Dual Entry Points -->
-    <section class="relative overflow-hidden festive-subtle border-b border-rose-100 pt-8 pb-12 sm:pt-14 sm:pb-16">
+    <section class="home-hero relative overflow-hidden border-b border-rose-100 py-10 sm:py-16 lg:py-20">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-rose-200 shadow-2xs mb-4">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="text-xs font-bold text-gray-700">AI EVENT MARKETPLACE & RUN-SHEET COORDINATION</span>
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 border border-rose-200 shadow-sm mb-5">
+          <span class="text-xs font-bold tracking-wide text-rose-800">A CALMER WAY TO PLAN YOUR CELEBRATION</span>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div class="lg:col-span-7 space-y-4">
-            <h1 id="hero-title-text" class="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight">
-              Celebrations Planned with Precision & Heart
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
+          <div class="lg:col-span-7 space-y-5">
+            <h1 id="hero-title-text" class="max-w-3xl text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-950 tracking-tight leading-[1.08]">
+              Plan beautiful events. Find trusted local vendors.
             </h1>
-            <p id="hero-sub-text" class="text-sm sm:text-base text-gray-600 max-w-xl leading-relaxed">
-              Discover trusted local vendors, explore 100% itemized upfront pricing, and plan your dream wedding or milestone event with AI in your mother tongue.
+            <p id="hero-sub-text" class="text-base sm:text-lg text-gray-700 max-w-2xl leading-relaxed">
+              Bring your plans, budget, and guest list together with local event professionals and AI assistance in the language you prefer.
             </p>
 
-            <!-- THE TWO CLEAR ENTRY POINTS -->
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-              <!-- Entry Point A: Plan or Book an Event -->
-              <button id="hero-plan-btn" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-sm shadow-lg shadow-rose-600/25 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5">
-                <span>🎉</span>
-                <span>Plan or Book an Event</span>
+            <div class="flex flex-col sm:flex-row items-stretch gap-3 pt-1">
+              <button id="hero-plan-btn" class="home-primary-action px-6 py-3.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-sm shadow-lg shadow-rose-900/15 flex items-center justify-center gap-2 transition-all">
+                <span aria-hidden="true">✦</span>
+                <span id="hero-plan-label">Plan an Event</span>
               </button>
-
-              <!-- Entry Point B: Register My Business / Provide Event Services -->
-              <button id="hero-register-btn" class="px-6 py-3.5 rounded-2xl bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-200 font-bold text-sm shadow-xs flex items-center justify-center gap-2 transition-all">
-                <span>💼</span>
-                <span>Register My Business</span>
+              <button id="hero-vendors-btn" class="home-primary-action px-6 py-3.5 rounded-xl bg-white hover:bg-rose-50 text-gray-900 border border-gray-300 font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all">
+                <span aria-hidden="true">⌕</span>
+                <span id="hero-vendors-label">Find Vendors</span>
               </button>
             </div>
 
-            <!-- Spoken Prompt Voice Chip -->
-            <div class="pt-2 flex items-center gap-2">
-              <span class="text-xs text-gray-500 font-medium">Try speaking:</span>
-              <button id="hero-voice-chip" class="text-xs px-3 py-1 bg-white hover:bg-rose-50 text-rose-700 font-bold rounded-full border border-rose-200 transition flex items-center gap-1.5 shadow-xs">
+            <div class="pt-1 flex flex-wrap items-center gap-2">
+              <span class="text-sm text-gray-600 font-medium">Try voice planning:</span>
+              <button id="hero-voice-chip" class="min-h-10 text-xs px-3 py-2 bg-white hover:bg-rose-50 text-rose-800 font-bold rounded-full border border-rose-200 transition flex items-center gap-1.5 shadow-sm">
                 <span>🎤</span>
                 <span>"హైదరాబాద్ లో బెస్ట్ క్యాటరింగ్ కావాలి"</span>
               </button>
@@ -182,23 +169,24 @@
 
           <!-- AI Event Planner Teaser Card -->
           <div class="lg:col-span-5">
-            <div class="bg-white rounded-3xl p-6 sm:p-7 border-2 border-rose-200/80 shadow-xl relative overflow-hidden">
-              <div class="flex items-center gap-3 mb-3">
-                <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl font-bold">
-                  ✨
+            <div class="home-planner-card bg-white rounded-3xl p-6 sm:p-8 border border-rose-100 shadow-xl relative overflow-hidden">
+              <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-5">
+                  <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center text-xl font-bold" aria-hidden="true">✦</div>
+                  <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-rose-700">AI event planner</p>
+                    <h2 class="font-extrabold text-gray-950 text-lg">A thoughtful plan, made together</h2>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="font-bold text-gray-900 text-base">Plan Your Event in 60 Seconds</h3>
-                  <p class="text-xs text-gray-500">Multilingual: Telugu • Hindi • English</p>
-                </div>
+                <p class="text-sm text-gray-700 leading-relaxed mb-6">
+                  Start with your occasion, guest count, and city. Get a tailored planning blueprint and explore real local providers.
+                </p>
+                <button onclick="navigateTo('aiPlanner');" class="w-full min-h-12 py-3 px-4 rounded-xl bg-gray-950 hover:bg-gray-800 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2">
+                  <span>Open the AI planner</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+                <p class="mt-3 text-center text-xs font-medium text-gray-600">Available in Telugu, Hindi, and English</p>
               </div>
-              <p class="text-xs text-gray-600 leading-relaxed mb-4">
-                Tell our AI your occasion, guest count, and city. Receive an itemized budget breakdown, authentic South Asian theme, and recommended providers with 1-click RFQ submission.
-              </p>
-              <button onclick="navigateTo('aiPlanner');" class="w-full py-3.5 px-4 rounded-xl ai-shimmer text-white font-bold text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition flex items-center justify-center gap-2">
-                <span>Launch AI Smart Planner</span>
-                <span>→</span>
-              </button>
             </div>
           </div>
         </div>
@@ -207,10 +195,10 @@
     </section>
 
     <!-- Main Content: Featured Providers & Special Offers -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 w-full space-y-12">
       
       <!-- Special Offer Banner -->
-      <div class="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500 via-rose-600 to-amber-600 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="home-offer-banner p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-600 to-amber-600 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-3">
           <span class="text-3xl">🎁</span>
           <div>
@@ -223,21 +211,50 @@
         </button>
       </div>
 
-      <!-- Featured Providers Section -->
-      <div>
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="text-lg font-black text-gray-900 tracking-tight">Verified Local Event Providers</h3>
-            <p class="text-xs text-gray-500">100% transparent itemized rate cards with zero hidden surcharges</p>
-          </div>
-          <button onclick="navigateTo('discover');" class="text-xs font-bold text-rose-600 hover:underline">
-            View All Providers →
+      <section aria-labelledby="home-tools-heading">
+        <div class="max-w-2xl mb-5">
+          <p class="text-xs font-bold uppercase tracking-wider text-rose-700">One connected toolkit</p>
+          <h2 id="home-tools-heading" class="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-950">Everything your event needs, in one place</h2>
+          <p class="mt-2 text-sm text-gray-600">Move from the first idea to event day with dedicated tools for your plans, people, and budget.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button type="button" onclick="navigateToEventTab('budget');" class="home-tool-card text-left p-5 sm:p-6 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md transition">
+            <span class="home-tool-icon bg-amber-50 text-amber-800" aria-hidden="true">₹</span>
+            <span class="mt-4 block text-base font-extrabold text-gray-950">Budget tracker</span>
+            <span class="mt-1 block text-sm text-gray-600">See your event allocation and recorded spending together.</span>
+            <span class="mt-4 inline-flex items-center gap-2 text-sm font-bold text-rose-800">Open budget <span aria-hidden="true">→</span></span>
+          </button>
+          <button type="button" onclick="navigateToEventTab('guests');" class="home-tool-card text-left p-5 sm:p-6 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md transition">
+            <span class="home-tool-icon bg-emerald-50 text-emerald-800" aria-hidden="true">♡</span>
+            <span class="mt-4 block text-base font-extrabold text-gray-950">Guest management</span>
+            <span class="mt-1 block text-sm text-gray-600">Keep your guest list and event-day check-in in reach.</span>
+            <span class="mt-4 inline-flex items-center gap-2 text-sm font-bold text-rose-800">Manage guests <span aria-hidden="true">→</span></span>
+          </button>
+          <button type="button" onclick="navigateTo('myEvents');" class="home-tool-card text-left p-5 sm:p-6 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md transition">
+            <span class="home-tool-icon bg-rose-50 text-rose-800" aria-hidden="true">✦</span>
+            <span class="mt-4 block text-base font-extrabold text-gray-950">Event workspace</span>
+            <span class="mt-1 block text-sm text-gray-600">Bring your run-sheet, bookings, and quotations into one view.</span>
+            <span class="mt-4 inline-flex items-center gap-2 text-sm font-bold text-rose-800">Open workspace <span aria-hidden="true">→</span></span>
           </button>
         </div>
-        <div id="home-featured-vendors" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      </section>
+
+      <!-- Featured Providers Section -->
+      <section aria-labelledby="home-vendors-heading">
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wider text-rose-700">Vendor marketplace</p>
+            <h2 id="home-vendors-heading" class="mt-1 text-2xl sm:text-3xl font-extrabold text-gray-950 tracking-tight">Meet local event professionals</h2>
+            <p class="mt-2 text-sm text-gray-600">Browse real providers and compare clear, itemized packages.</p>
+          </div>
+          <button onclick="navigateTo('discover');" class="min-h-11 px-4 rounded-xl bg-rose-50 text-rose-800 text-sm font-bold hover:bg-rose-100 transition">
+            Explore all vendors <span aria-hidden="true">→</span>
+          </button>
+        </div>
+        <div id="home-featured-vendors" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" aria-live="polite">
           <!-- Injected via JavaScript -->
         </div>
-      </div>
+      </section>
 
     </div>
   </div>
@@ -374,8 +391,12 @@
           <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 uppercase tracking-wider mb-1">
             Active Event Workspace
           </span>
-          <h2 id="event-title-display" class="text-2xl font-black text-gray-900">Loading Event...</h2>
+          <h2 id="event-title-display" class="text-2xl font-black text-gray-900">Your Event Workspace</h2>
           <p id="event-sub-display" class="text-xs text-gray-500 mt-1"></p>
+          <div id="event-status-display" class="mt-2 text-sm text-gray-600" role="status" aria-live="polite" hidden></div>
+          <button id="retry-event-load" type="button" class="mt-2 px-3 py-1.5 bg-rose-600 text-white font-bold text-xs rounded-lg hover:bg-rose-700" hidden>
+            Retry
+          </button>
         </div>
         <button onclick="document.getElementById('create-event-modal').classList.remove('hidden'); document.getElementById('create-event-modal').classList.add('flex');" class="px-4 py-2.5 bg-gray-900 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-gray-800 transition">
           + Create New Event
@@ -383,7 +404,7 @@
       </div>
 
       <!-- Sub-tab Navigation (Budget, Quotations, Tracking, Runsheet, Guests, Collaborators) -->
-      <div class="flex items-center gap-3 border-b border-gray-200 overflow-x-auto no-scrollbar">
+      <div id="event-tabs-navigation" class="flex items-center gap-3 border-b border-gray-200 overflow-x-auto no-scrollbar">
         <button id="tab-btn-budget" class="tab-btn py-3 px-4 text-xs font-bold border-b-2 border-transparent transition whitespace-nowrap">
           💰 Budget Manager
         </button>
@@ -403,14 +424,14 @@
 
       <!-- TAB 1: BUDGET MANAGER -->
       <div id="tab-pane-budget" class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
+        <div id="budget-summary-grid" class="grid grid-cols-2 gap-4">
           <div class="p-5 bg-white rounded-2xl border border-gray-200">
             <span class="text-xs text-gray-500 block">Total Budget Allocation</span>
-            <span id="budget-total-display" class="text-2xl font-black text-gray-900">₹0</span>
+            <span id="budget-total-display" class="text-2xl font-black text-gray-900">—</span>
           </div>
           <div class="p-5 bg-white rounded-2xl border border-gray-200">
             <span class="text-xs text-gray-500 block">Total Approved / Spent</span>
-            <span id="budget-spent-display" class="text-2xl font-black text-rose-600">₹0</span>
+            <span id="budget-spent-display" class="text-2xl font-black text-rose-600">—</span>
           </div>
         </div>
         <div id="budget-items-container" class="space-y-3">
@@ -569,10 +590,10 @@
           </button>
         </div>
 
-        <!-- Role Switching -->
+        <!-- Customer/Vendor Role Switching -->
         <div class="p-4 bg-rose-50/50 rounded-2xl border border-rose-200 space-y-3">
-          <h4 class="font-bold text-sm text-gray-900">Switch User Role</h4>
-          <p class="text-xs text-gray-600">Switch between planning your celebrations as a customer, managing listings as a vendor, or accessing administrative controls.</p>
+          <h4 class="font-bold text-sm text-gray-900">Switch Customer/Vendor View</h4>
+          <p class="text-xs text-gray-600">Switch between planning celebrations as a customer and managing listings as a vendor. Administrator access is assigned separately.</p>
           <div class="flex gap-2">
             <button id="switch-role-customer-btn" class="px-4 py-2 bg-white text-gray-800 font-bold text-xs rounded-xl border border-gray-200 shadow-2xs">
               👤 Customer View
@@ -619,7 +640,7 @@
   </button>
 
   <!-- Mobile Bottom Navigation Bar -->
-  <nav id="mobile-bottom-nav" class="fixed bottom-0 inset-x-0 z-30 sm:hidden glass-nav border-t border-gray-200 px-4 py-2 flex items-center justify-around text-[10px] font-semibold text-gray-600">
+  <nav id="mobile-bottom-nav" class="fixed bottom-0 inset-x-0 z-30 lg:hidden glass-nav border-t border-gray-200 px-4 py-2 flex items-center justify-around text-[10px] font-semibold text-gray-600">
     <!-- Injected dynamically based on role -->
   </nav>
 
@@ -630,34 +651,19 @@
   <!-- AUTH MODAL -->
   <div id="auth-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
-      <button id="close-auth-modal" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
-
-      <!-- Quick Demo Login Buttons -->
-      <div class="mb-5 p-3.5 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
-        <span class="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">⚡ Quick Demo One-Click Logins:</span>
-        <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
-          <button id="demo-login-customer" class="p-2 bg-white rounded-xl border border-amber-300 font-bold text-amber-900 hover:bg-amber-100">
-            👤 Customer
-          </button>
-          <button id="demo-login-vendor" class="p-2 bg-white rounded-xl border border-amber-300 font-bold text-amber-900 hover:bg-amber-100">
-            💼 Vendor
-          </button>
-          <button id="demo-login-admin" class="p-2 bg-white rounded-xl border border-amber-300 font-bold text-amber-900 hover:bg-amber-100">
-            🛡️ Admin
-          </button>
-        </div>
-      </div>
+      <button id="close-auth-modal" type="button" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">✕</button>
+      <h3 id="auth-modal-heading" class="text-xl font-extrabold text-gray-950 mb-4 pr-8">Sign in to your account</h3>
 
       <!-- Auth Form Tabs -->
       <div class="flex border-b mb-4">
-        <button id="auth-tab-login" class="flex-1 py-2 text-xs font-bold border-b-2 border-rose-600 text-rose-600">Log in</button>
-        <button id="auth-tab-register" class="flex-1 py-2 text-xs font-bold text-gray-500">Register</button>
+        <button id="auth-tab-login" type="button" class="flex-1 py-2 text-xs font-bold border-b-2 border-rose-600 text-rose-600">Log in</button>
+        <button id="auth-tab-register" type="button" class="flex-1 py-2 text-xs font-bold text-gray-500">Register</button>
       </div>
 
       <form id="auth-login-form" class="space-y-3">
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-1">Email or Phone Number</label>
-          <input type="text" id="auth-login-id" required placeholder="customer@veduka.ai or 9800000002" class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
+          <input type="text" id="auth-login-id" required placeholder="Email address or phone number" class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium">
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-1">Password</label>
@@ -685,7 +691,7 @@
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-1">Password</label>
-          <input type="password" id="auth-reg-pass" required placeholder="••••••••" class="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+          <input type="password" id="auth-reg-pass" required minlength="12" placeholder="At least 12 characters" class="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs">
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-1">Register As</label>

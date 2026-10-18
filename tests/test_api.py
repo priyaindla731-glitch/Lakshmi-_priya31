@@ -1,6 +1,7 @@
 import urllib.request
 import urllib.error
 import json
+import os
 
 def test(name, url, method='GET', data=None, token=None, expected_status=(200, 201)):
     headers = {'Content-Type': 'application/json'}
@@ -50,8 +51,17 @@ def run_all():
     login_v = test('Login Vendor', f'{base}/api/auth/login', 'POST', {'identifier':'nirvana@veduka.ai','password':'vendor123'})
     token_v = login_v['token'] if login_v else None
 
-    login_a = test('Login Admin', f'{base}/api/auth/login', 'POST', {'identifier':'admin@veduka.ai','password':'admin123'})
-    token_a = login_a['token'] if login_a else None
+    admin_email = os.environ.get("VEDUKA_TEST_ADMIN_EMAIL")
+    admin_password = os.environ.get("VEDUKA_TEST_ADMIN_PASSWORD")
+    token_a = None
+    if admin_email and admin_password:
+        login_a = test('Login Admin', f'{base}/api/auth/login', 'POST', {
+            'identifier': admin_email,
+            'password': admin_password
+        })
+        token_a = login_a['token'] if login_a else None
+    else:
+        print('[SKIP] Admin tests: configure a dedicated test administrator account.')
 
     test('Get Me Profile', f'{base}/api/auth/me', 'GET', token=token_c)
     test('Customer Cannot Elevate to Admin', f'{base}/api/auth/switch-role', 'POST', {'role':'admin'}, token=token_c, expected_status=403)
@@ -85,8 +95,8 @@ def run_all():
 
     # 7. Guests & QR Check-in
     test('Guests List for Event 1', f'{base}/api/events/1/guests', 'GET', token=token_c)
-    test('QR Door Check-in Verification', f'{base}/api/guests/check-in', 'POST', {'qr_code_token':'GUEST-RAO-9848'})
-    test('QR Door Check-in (Invalid Token Test)', f'{base}/api/guests/check-in', 'POST', {'qr_code_token':'INVALID-TOKEN-999'}, expected_status=404)
+    test('QR Door Check-in Verification', f'{base}/api/guests/check-in', 'POST', {'qr_code_token':'GUEST-RAO-9848'}, token=token_c)
+    test('QR Door Check-in (Invalid Token Test)', f'{base}/api/guests/check-in', 'POST', {'qr_code_token':'INVALID-TOKEN-999'}, token=token_c, expected_status=404)
 
     # 8. Cancellation & Refund Workflow Test
     test('Cancel Booking Test (Check transparent refund calculation)', f'{base}/api/bookings/1/cancel', 'POST', token=token_c)
@@ -99,8 +109,9 @@ def run_all():
     test('Seller Dashboard Metrics', f'{base}/api/seller/dashboard', 'GET', token=token_v)
 
     # 11. Admin Overview & KYC Verification
-    test('Admin Overview Metrics', f'{base}/api/admin/overview', 'GET', token=token_a)
-    test('Admin Toggle KYC Verification', f'{base}/api/admin/verify-vendor/1', 'POST', token=token_a)
+    if token_a:
+        test('Admin Overview Metrics', f'{base}/api/admin/overview', 'GET', token=token_a)
+        test('Admin Toggle KYC Verification', f'{base}/api/admin/verify-vendor/1', 'POST', token=token_a)
 
     # 12. Support Tickets & Notifications
     test('List Support Tickets', f'{base}/api/support', 'GET', token=token_c)

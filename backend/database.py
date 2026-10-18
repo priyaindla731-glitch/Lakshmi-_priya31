@@ -2,6 +2,9 @@ import sqlite3
 import os
 import json
 import hashlib
+import hmac
+import re
+from werkzeug.security import check_password_hash, generate_password_hash
 
 DB_PATH = os.environ.get("DATABASE_PATH") or os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'veduka.db')
 
@@ -12,7 +15,28 @@ def get_db():
     return conn
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return generate_password_hash(password)
+
+def verify_password(stored_hash: str, password: str) -> bool:
+    if re.fullmatch(r"[0-9a-fA-F]{64}", stored_hash or ""):
+        legacy_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return hmac.compare_digest(stored_hash.lower(), legacy_hash)
+    try:
+        return check_password_hash(stored_hash, password)
+    except (TypeError, ValueError):
+        return False
+
+def is_legacy_password_hash(stored_hash: str) -> bool:
+    return bool(re.fullmatch(r"[0-9a-fA-F]{64}", stored_hash or ""))
+
+def demo_data_enabled() -> bool:
+    requested = os.environ.get("ENABLE_DEMO_DATA", "false").lower() in ("1", "true", "yes")
+    production = (
+        os.environ.get("ENVIRONMENT", "").lower() == "production"
+        or os.environ.get("FLASK_ENV", "").lower() == "production"
+        or bool(os.environ.get("RENDER_SERVICE_ID"))
+    )
+    return requested and not production
 
 def init_db():
     conn = get_db()
@@ -368,8 +392,34 @@ def init_db():
     )
     ''')
 
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS revoked_tokens (
+        token_hash TEXT PRIMARY KEY,
+        expires_at INTEGER NOT NULL
+    )
+    ''')
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS auth_rate_limits (
+        action TEXT NOT NULL,
+        client_key TEXT NOT NULL,
+        window_start INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (action, client_key, window_start)
+    )
+    ''')
+
+    cursor.execute(
+        """
+        UPDATE users SET role = 'customer'
+        WHERE LOWER(email) = 'admin@veduka.ai'
+          AND full_name = 'Super Administrator'
+          AND role = 'admin'
+        """
+    )
+
     conn.commit()
-    if os.environ.get("ENABLE_DEMO_DATA", "true").lower() in ("1", "true", "yes"):
+    if demo_data_enabled():
         seed_initial_data(conn)
     conn.close()
 
@@ -383,14 +433,7 @@ def seed_initial_data(conn):
 
     print("Seeding initial authentic marketplace data...")
 
-    # 1. Admin Account
-    cursor.execute('''
-    INSERT INTO users (email, phone, password_hash, full_name, role, preferred_language)
-    VALUES (?, ?, ?, ?, ?, ?)
-    ''', ('admin@veduka.ai', '9800000001', hash_password('admin123'), 'Super Administrator', 'admin', 'en'))
-    admin_id = cursor.lastrowid
-
-    # 2. Demo Customer Account
+    # Development-only customer and vendor fixtures; administrator accounts must be provisioned out of band.
     cursor.execute('''
     INSERT INTO users (email, phone, password_hash, full_name, role, preferred_language)
     VALUES (?, ?, ?, ?, ?, ?)

@@ -12,14 +12,35 @@ const state = {
   activeView: "home",
   activeEventTab: "budget",
   vendors: [],
+  vendorsStatus: "loading",
+  vendorsError: "",
   selectedCategory: "all",
   selectedCity: "All Cities",
   searchQuery: "",
   comparisonList: [], // array of vendor IDs
   activeEvent: null,
-  activeEventId: 1,
+  activeEventId: null,
+  activeEventStatus: api.getUser() && api.getToken() ? "idle" : "unauthenticated",
+  activeEventError: "",
+  activeEventRequestId: 0,
   notifications: []
 };
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function safeImageUrl(value) {
+  return typeof value === "string" && /^https?:\/\//i.test(value)
+    ? escapeHtml(value)
+    : "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80";
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   applyTheme();
@@ -30,10 +51,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupListenPage();
   setupAccessibilityControls();
 
-  // Load initial data
-  await loadNotifications();
-  await loadVendors();
-  await refreshActiveEvent();
+  // Load independent initial data together so the workspace starts fetching immediately.
+  await Promise.all([loadNotifications(), loadVendors(), refreshActiveEvent()]);
   renderApp();
 });
 
@@ -75,25 +94,37 @@ function setupNavEvents() {
     });
   });
 
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element) || target.closest(".account-menu-wrap")) return;
+    const menu = document.getElementById("header-account-menu");
+    const button = document.getElementById("header-login-btn");
+    if (menu) menu.classList.add("hidden");
+    if (button) button.setAttribute("aria-expanded", "false");
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const menu = document.getElementById("header-account-menu");
+    const button = document.getElementById("header-login-btn");
+    if (menu && !menu.classList.contains("hidden")) {
+      menu.classList.add("hidden");
+      button?.setAttribute("aria-expanded", "false");
+      button?.focus();
+    }
+  });
+
   // Entry Point CTAs
   const planBtn = document.getElementById("hero-plan-btn");
   if (planBtn) {
     planBtn.addEventListener("click", () => {
-      navigateTo("discover");
+      navigateTo("aiPlanner");
     });
   }
 
-  const registerBizBtn = document.getElementById("hero-register-btn");
-  if (registerBizBtn) {
-    registerBizBtn.addEventListener("click", () => {
-      if (!state.user) {
-        openAuthModal("register", "vendor");
-      } else if (state.currentRole !== "vendor") {
-        switchUserRole("vendor");
-      } else {
-        navigateTo("sellerDashboard");
-      }
-    });
+  const vendorsBtn = document.getElementById("hero-vendors-btn");
+  if (vendorsBtn) {
+    vendorsBtn.addEventListener("click", () => navigateTo("discover"));
   }
 }
 
@@ -103,8 +134,20 @@ export function navigateTo(viewName) {
   renderApp();
 }
 
+function navigateToEventTab(tab) {
+  state.activeEventTab = tab;
+  navigateTo("myEvents");
+}
+
+window.navigateToEventTab = navigateToEventTab;
+
 // Load Vendors from Backend
 async function loadVendors() {
+  state.vendorsStatus = "loading";
+  state.vendorsError = "";
+  if (state.activeView === "home") renderFeaturedVendors();
+  else if (state.activeView === "discover") renderVendorCatalog();
+
   try {
     const res = await api.getVendors({
       category: state.selectedCategory,
@@ -112,22 +155,69 @@ async function loadVendors() {
       q: state.searchQuery
     });
     state.vendors = res.vendors || [];
-  } catch (e) {
-    console.error("Failed to load vendors:", e);
+    state.vendorsStatus = state.vendors.length ? "ready" : "empty";
+  } catch (error) {
+    console.error("Failed to load vendors:", error);
+    state.vendorsStatus = "error";
+    state.vendorsError = error.message || "An unexpected error occurred.";
+  } finally {
+    if (state.activeView === "home") renderFeaturedVendors();
+    else if (state.activeView === "discover") renderVendorCatalog();
   }
 }
 
 // Refresh active customer event
 async function refreshActiveEvent() {
+  const requestId = ++state.activeEventRequestId;
+  const userId = state.user ? state.user.id : null;
+  const token = api.getToken();
+
+  state.activeEvent = null;
+  state.activeEventId = null;
+  state.activeEventError = "";
+  state.activeEventStatus = !userId ? "unauthenticated" : !token ? "error" : "loading";
+
+  const isCurrentRequest = () =>
+    requestId === state.activeEventRequestId &&
+    state.user && state.user.id === userId &&
+    api.getToken() === token;
+
+  if (!userId || !token) {
+    if (userId && !token) state.activeEventError = "Your session has expired. Please log in again.";
+    if (state.activeView === "myEvents") renderMyEventsView();
+    return;
+  }
+
+  if (state.activeView === "myEvents") renderMyEventsView();
+
   try {
     const res = await api.getEvents();
-    if (res.events && res.events.length > 0) {
-      state.activeEventId = res.events[0].id;
-      const details = await api.getEventDetails(state.activeEventId);
-      state.activeEvent = details.event;
+    if (!Array.isArray(res.events)) {
+      throw new Error("The events service returned an invalid response. Please try again.");
     }
-  } catch (e) {
-    console.log("No active events loaded:", e);
+    if (!res.events.length) {
+      if (isCurrentRequest()) state.activeEventStatus = "empty";
+      return;
+    }
+
+    const eventId = res.events[0].id;
+    const details = await api.getEventDetails(eventId);
+    if (!details.event) throw new Error("Event details were not returned. Please try again.");
+
+    if (isCurrentRequest()) {
+      state.activeEventId = eventId;
+      state.activeEvent = details.event;
+      state.activeEventStatus = "ready";
+    }
+  } catch (error) {
+    if (isCurrentRequest()) {
+      state.activeEventError = error.message || "An unexpected error occurred.";
+      state.activeEventStatus = "error";
+    }
+  } finally {
+    if (isCurrentRequest() && state.activeView === "myEvents") {
+      renderMyEventsView();
+    }
   }
 }
 
@@ -226,11 +316,11 @@ function updateHeaderAndNav() {
       authContainer.innerHTML = `
         <div class="flex items-center gap-2">
           <div class="text-right hidden sm:block">
-            <span class="block text-xs font-bold text-gray-900">${state.user.full_name}</span>
+            <span class="block text-xs font-bold text-gray-900">${escapeHtml(state.user.full_name)}</span>
             <span class="block text-[10px] text-rose-600 font-semibold uppercase">${state.currentRole}</span>
           </div>
-          <button id="header-user-menu-btn" class="w-9 h-9 rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-            ${state.user.full_name.charAt(0)}
+          <button id="header-user-menu-btn" aria-label="Open account profile" class="w-10 h-10 rounded-full bg-gradient-to-br from-rose-700 to-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+            ${escapeHtml(state.user.full_name.charAt(0))}
           </button>
         </div>
       `;
@@ -238,12 +328,43 @@ function updateHeaderAndNav() {
       if (btn) btn.addEventListener("click", () => navigateTo("profile"));
     } else {
       authContainer.innerHTML = `
-        <button id="header-login-btn" class="px-3.5 py-1.5 rounded-full bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs shadow-xs transition">
-          ${t("loginBtn")}
-        </button>
+        <div class="account-menu-wrap">
+          <button id="header-login-btn" type="button" aria-controls="header-account-menu" aria-expanded="false" class="min-h-10 px-4 rounded-xl bg-gray-950 hover:bg-gray-800 text-white font-bold text-sm shadow-sm transition">
+            ${t("accountMenu")}
+            <span class="ml-1" aria-hidden="true">⌄</span>
+          </button>
+          <div id="header-account-menu" class="account-menu-panel hidden" role="group" aria-label="${t("accountMenu")}">
+            <button type="button" data-account-action="customer-login">${t("customerLogin")}</button>
+            <button type="button" data-account-action="vendor-login">${t("vendorLogin")}</button>
+            <div class="account-menu-divider" aria-hidden="true"></div>
+            <button type="button" data-account-action="customer-register">${t("customerRegister")}</button>
+            <button type="button" data-account-action="vendor-register">${t("vendorRegister")}</button>
+          </div>
+        </div>
       `;
       const btn = document.getElementById("header-login-btn");
-      if (btn) btn.addEventListener("click", () => openAuthModal("login"));
+      const menu = document.getElementById("header-account-menu");
+      if (btn && menu) {
+        btn.addEventListener("click", () => {
+          const isOpen = !menu.classList.contains("hidden");
+          menu.classList.toggle("hidden", isOpen);
+          btn.setAttribute("aria-expanded", String(!isOpen));
+        });
+        menu.querySelectorAll("[data-account-action]").forEach(item => {
+          item.addEventListener("click", () => {
+            const action = item.getAttribute("data-account-action");
+            menu.classList.add("hidden");
+            btn.setAttribute("aria-expanded", "false");
+            if (action.endsWith("-register")) {
+              openAuthModal("register", action.startsWith("vendor") ? "vendor" : "customer");
+            } else {
+              const role = action.startsWith("vendor") ? "vendor" : "customer";
+              openAuthModal("login", role);
+              document.getElementById("auth-login-id")?.focus();
+            }
+          });
+        });
+      }
     }
   }
 
@@ -343,6 +464,10 @@ function renderHomeView() {
   const heroSub = document.getElementById("hero-sub-text");
   if (heroTitle) heroTitle.textContent = t("heroTitle");
   if (heroSub) heroSub.textContent = t("heroSubtitle");
+  const planLabel = document.getElementById("hero-plan-label");
+  const vendorsLabel = document.getElementById("hero-vendors-label");
+  if (planLabel) planLabel.textContent = t("ctaPlanEvent");
+  if (vendorsLabel) vendorsLabel.textContent = t("ctaFindVendors");
 
   renderFeaturedVendors();
 }
@@ -350,6 +475,26 @@ function renderHomeView() {
 function renderFeaturedVendors() {
   const container = document.getElementById("home-featured-vendors");
   if (!container) return;
+
+  if (state.vendorsStatus === "loading") {
+    container.innerHTML = `<div class="col-span-full p-8 text-center text-sm text-gray-600" role="status"><span class="inline-block h-4 w-4 align-middle animate-spin rounded-full border-2 border-gray-300 border-t-rose-700" aria-hidden="true"></span> <span class="align-middle">Loading local vendors…</span></div>`;
+    return;
+  }
+  if (state.vendorsStatus === "error") {
+    container.innerHTML = `
+      <div class="col-span-full p-6 text-center bg-white rounded-2xl border border-red-200" role="alert">
+        <p class="home-vendor-error text-sm font-semibold text-red-800"></p>
+        <button id="home-vendors-retry" type="button" class="mt-3 min-h-10 px-4 rounded-xl bg-rose-700 text-white text-sm font-bold hover:bg-rose-800">Retry</button>
+      </div>
+    `;
+    container.querySelector(".home-vendor-error").textContent = `Unable to load vendors: ${state.vendorsError}`;
+    document.getElementById("home-vendors-retry").onclick = loadVendors;
+    return;
+  }
+  if (state.vendorsStatus === "empty") {
+    container.innerHTML = `<div class="col-span-full p-8 text-center bg-white rounded-2xl border border-gray-200 text-sm text-gray-700">No local vendors are available right now. Please check back soon.</div>`;
+    return;
+  }
 
   const featured = state.vendors.slice(0, 3);
   container.innerHTML = featured.map(v => renderVendorCardHtml(v)).join("");
@@ -405,10 +550,28 @@ function renderVendorCatalog() {
   if (!container) return;
 
   if (countDisplay) {
-    countDisplay.textContent = `${state.vendors.length} Verified Local Service Providers Available`;
+    countDisplay.textContent = state.vendorsStatus === "loading"
+      ? "Loading local service providers…"
+      : `${state.vendors.length} Verified Local Service Providers Available`;
   }
 
-  if (state.vendors.length === 0) {
+  if (state.vendorsStatus === "loading") {
+    container.innerHTML = `<div class="col-span-full p-10 text-center bg-white rounded-2xl border border-gray-200 text-sm text-gray-600" role="status"><span class="inline-block h-4 w-4 align-middle animate-spin rounded-full border-2 border-gray-300 border-t-rose-700" aria-hidden="true"></span> <span class="align-middle">Loading vendors…</span></div>`;
+    return;
+  }
+  if (state.vendorsStatus === "error") {
+    container.innerHTML = `
+      <div class="col-span-full p-8 text-center bg-white rounded-2xl border border-red-200" role="alert">
+        <p class="discover-vendor-error text-sm font-semibold text-red-800"></p>
+        <button id="discover-vendors-retry" type="button" class="mt-3 min-h-10 px-4 rounded-xl bg-rose-700 text-white text-sm font-bold hover:bg-rose-800">Retry</button>
+      </div>
+    `;
+    container.querySelector(".discover-vendor-error").textContent = `Unable to load vendors: ${state.vendorsError}`;
+    document.getElementById("discover-vendors-retry").onclick = loadVendors;
+    return;
+  }
+
+  if (state.vendorsStatus === "empty" || state.vendors.length === 0) {
     container.innerHTML = `
       <div class="col-span-full py-16 text-center bg-white rounded-3xl border border-gray-100 shadow-sm">
         <span class="text-4xl block mb-2">🔍</span>
@@ -439,57 +602,57 @@ function renderVendorCardHtml(v) {
   return `
     <article class="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group">
       <div class="relative h-48 overflow-hidden bg-gray-100">
-        <img src="${v.image_url || 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+        <img src="${safeImageUrl(v.image_url)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
 
         <div class="absolute top-3 left-3 right-3 flex items-center justify-between">
           <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${v.kyc_verified ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-white'} backdrop-blur-md">
             ${v.kyc_verified ? '✓ Verified Pro' : 'Registered Provider'}
           </span>
-          <button class="compare-toggle-btn px-2 py-1 rounded-lg text-[10px] font-bold border backdrop-blur-md ${isCompared ? 'bg-rose-600 text-white border-rose-600' : 'bg-white/90 text-gray-800 border-white'}" data-vid="${v.id}">
+          <button class="compare-toggle-btn px-2 py-1 rounded-lg text-[10px] font-bold border backdrop-blur-md ${isCompared ? 'bg-rose-600 text-white border-rose-600' : 'bg-white/90 text-gray-800 border-white'}" data-vid="${escapeHtml(v.id)}">
             ${isCompared ? '✓ Compared' : '+ Compare'}
           </button>
         </div>
 
         <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
-          <span class="flex items-center gap-1 drop-shadow">📍 ${v.cities}</span>
-          <span class="text-[10px] opacity-90 drop-shadow">⚡ ${v.response_time || '< 15 mins'}</span>
+          <span class="flex items-center gap-1 drop-shadow">📍 ${escapeHtml(v.cities)}</span>
+          <span class="text-[10px] opacity-90 drop-shadow">⚡ ${escapeHtml(v.response_time || '< 15 mins')}</span>
         </div>
       </div>
 
       <div class="p-5 flex-1 flex flex-col justify-between">
         <div>
           <div class="flex items-start justify-between gap-2 mb-1.5">
-            <h3 class="font-bold text-gray-900 text-base leading-snug group-hover:text-rose-600 transition-colors">${v.business_name}</h3>
+            <h3 class="font-bold text-gray-900 text-base leading-snug group-hover:text-rose-600 transition-colors">${escapeHtml(v.business_name)}</h3>
             <div class="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 flex-shrink-0">
               <span class="text-amber-500 text-xs">★</span>
-              <span class="font-bold text-gray-900 text-xs">${v.rating_avg}</span>
-              <span class="text-[10px] text-gray-500">(${v.review_count})</span>
+              <span class="font-bold text-gray-900 text-xs">${escapeHtml(v.rating_avg)}</span>
+              <span class="text-[10px] text-gray-500">(${escapeHtml(v.review_count)})</span>
             </div>
           </div>
 
-          <p class="text-xs text-gray-600 line-clamp-2 leading-relaxed mb-4">${desc}</p>
+          <p class="text-xs text-gray-600 line-clamp-2 leading-relaxed mb-4">${escapeHtml(desc)}</p>
 
           <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 mb-4">
             <div class="flex items-baseline justify-between mb-1">
               <span class="text-[11px] font-semibold text-stone-500 uppercase tracking-wider">${t("fromPrice")}</span>
               <div class="text-right">
                 <span class="text-base font-extrabold text-gray-900">₹${Number(v.starting_price || 0).toLocaleString('en-IN')}</span>
-                <span class="text-[11px] text-gray-500 font-medium"> / ${v.price_unit || 'event'}</span>
+                <span class="text-[11px] text-gray-500 font-medium"> / ${escapeHtml(v.price_unit || 'event')}</span>
               </div>
             </div>
             <div class="text-[11px] text-gray-600 flex items-center gap-1.5 pt-1 border-t border-stone-200/60">
               <span class="text-emerald-600 font-bold">✓</span>
-              <span class="truncate">${v.lead_package_title || 'Itemized rate card available'}</span>
+              <span class="truncate">${escapeHtml(v.lead_package_title || 'Itemized rate card available')}</span>
             </div>
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100">
-          <button class="view-vendor-details-btn py-2.5 px-3 rounded-xl border border-gray-200 hover:border-rose-300 hover:bg-rose-50/50 text-gray-700 font-bold text-xs transition" data-vid="${v.id}">
+          <button class="view-vendor-details-btn py-2.5 px-3 rounded-xl border border-gray-200 hover:border-rose-300 hover:bg-rose-50/50 text-gray-700 font-bold text-xs transition" data-vid="${escapeHtml(v.id)}">
             ${t("itemizedBreakdownBtn")}
           </button>
-          <button class="open-quote-request-btn py-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold text-xs shadow-sm hover:shadow transition" data-vid="${v.id}" data-vname="${v.business_name}" data-vcat="${v.category}">
+          <button class="open-quote-request-btn py-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold text-xs shadow-sm hover:shadow transition" data-vid="${escapeHtml(v.id)}" data-vname="${escapeHtml(v.business_name)}" data-vcat="${escapeHtml(v.category)}">
             ${t("requestQuoteBtn")}
           </button>
         </div>
@@ -561,8 +724,8 @@ async function openComparisonModal() {
               <th class="p-3 font-bold text-gray-700">Service Feature</th>
               ${comps.map(c => `
                 <th class="p-3 font-bold text-gray-900 border-l min-w-[200px]">
-                  <div class="text-sm text-rose-700">${c.business_name}</div>
-                  <div class="text-[10px] text-gray-500">${c.category} • ★ ${c.rating_avg}</div>
+                  <div class="text-sm text-rose-700">${escapeHtml(c.business_name)}</div>
+                  <div class="text-[10px] text-gray-500">${escapeHtml(c.category)} • ★ ${escapeHtml(c.rating_avg)}</div>
                 </th>
               `).join("")}
             </tr>
@@ -572,7 +735,7 @@ async function openComparisonModal() {
               <td class="p-3 font-semibold bg-gray-50/50">Base Package</td>
               ${comps.map(c => `
                 <td class="p-3 border-l font-bold text-gray-900">
-                  ${c.packages[0] ? `₹${Number(c.packages[0].base_price).toLocaleString('en-IN')} / ${c.packages[0].unit}` : 'Custom'}
+                  ${c.packages[0] ? `₹${Number(c.packages[0].base_price).toLocaleString('en-IN')} / ${escapeHtml(c.packages[0].unit)}` : 'Custom'}
                 </td>
               `).join("")}
             </tr>
@@ -580,21 +743,21 @@ async function openComparisonModal() {
               <td class="p-3 font-semibold bg-gray-50/50">Top Inclusions</td>
               ${comps.map(c => `
                 <td class="p-3 border-l text-[11px]">
-                  ${c.packages[0] && c.packages[0].inclusions.length ? c.packages[0].inclusions.slice(0, 3).map(i => `<div>✓ ${i}</div>`).join("") : 'Specified in custom quote'}
+                  ${c.packages[0] && c.packages[0].inclusions.length ? c.packages[0].inclusions.slice(0, 3).map(i => `<div>✓ ${escapeHtml(i)}</div>`).join("") : 'Specified in custom quote'}
                 </td>
               `).join("")}
             </tr>
             <tr>
               <td class="p-3 font-semibold bg-gray-50/50">Cancellation Terms</td>
               ${comps.map(c => `
-                <td class="p-3 border-l text-[10px] text-gray-600">${c.terms_and_conditions || 'Standard 14-day advance'}</td>
+                <td class="p-3 border-l text-[10px] text-gray-600">${escapeHtml(c.terms_and_conditions || 'Standard 14-day advance')}</td>
               `).join("")}
             </tr>
             <tr>
               <td class="p-3 font-semibold bg-gray-50/50">Action</td>
               ${comps.map(c => `
                 <td class="p-3 border-l">
-                  <button class="w-full py-2 bg-rose-600 text-white font-bold rounded-lg text-xs hover:bg-rose-700 transition" onclick="document.getElementById('vendor-comparison-modal').classList.add('hidden'); openRfqModal(${c.id}, '${c.business_name}', '${c.category}');">
+                  <button class="comparison-quote-btn w-full py-2 bg-rose-600 text-white font-bold rounded-lg text-xs hover:bg-rose-700 transition" data-vid="${escapeHtml(c.id)}" data-vname="${escapeHtml(c.business_name)}" data-vcat="${escapeHtml(c.category)}">
                     Request Quote
                   </button>
                 </td>
@@ -604,6 +767,12 @@ async function openComparisonModal() {
         </table>
       </div>
     `;
+    content.querySelectorAll(".comparison-quote-btn").forEach(button => {
+      button.onclick = () => {
+        modal.classList.add("hidden");
+        openRfqModal(button.dataset.vid, button.dataset.vname, button.dataset.vcat);
+      };
+    });
   } catch (e) {
     content.innerHTML = `<div class="p-6 text-center text-red-600 text-xs">Failed to load comparison data.</div>`;
   }
@@ -624,14 +793,14 @@ async function openVendorModal(vendorId) {
     content.innerHTML = `
       <div class="space-y-6">
         <div class="flex items-center gap-4 border-b pb-4">
-          <img src="${v.image_url || 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80'}" class="w-20 h-20 rounded-2xl object-cover" />
+          <img src="${safeImageUrl(v.image_url)}" class="w-20 h-20 rounded-2xl object-cover" />
           <div>
             <div class="flex items-center gap-2">
-              <span class="text-xs font-bold uppercase text-rose-600">${v.category}</span>
+              <span class="text-xs font-bold uppercase text-rose-600">${escapeHtml(v.category)}</span>
               ${v.kyc_verified ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">✓ KYC Verified</span>' : ''}
             </div>
-            <h3 class="text-xl font-bold text-gray-900">${v.business_name}</h3>
-            <p class="text-xs text-gray-500">📍 ${v.cities} (Radius: ${v.service_radius_km} km) • ★ ${v.rating_avg} (${v.review_count} verified reviews)</p>
+            <h3 class="text-xl font-bold text-gray-900">${escapeHtml(v.business_name)}</h3>
+            <p class="text-xs text-gray-500">📍 ${escapeHtml(v.cities)} (Radius: ${escapeHtml(v.service_radius_km)} km) • ★ ${escapeHtml(v.rating_avg)} (${escapeHtml(v.review_count)} verified reviews)</p>
           </div>
         </div>
 
@@ -642,8 +811,8 @@ async function openVendorModal(vendorId) {
               <div class="p-4 rounded-2xl border border-rose-200 bg-rose-50/20">
                 <div class="flex justify-between items-start mb-2">
                   <div>
-                    <h5 class="font-bold text-sm text-gray-900">${p.title}</h5>
-                    <span class="text-[11px] text-gray-500 font-medium">Pricing Model: ${p.pricing_model} (${p.unit})</span>
+                    <h5 class="font-bold text-sm text-gray-900">${escapeHtml(p.title)}</h5>
+                    <span class="text-[11px] text-gray-500 font-medium">Pricing Model: ${escapeHtml(p.pricing_model)} (${escapeHtml(p.unit)})</span>
                   </div>
                   <span class="font-extrabold text-rose-700 text-base">₹${Number(p.base_price).toLocaleString('en-IN')}</span>
                 </div>
@@ -651,13 +820,13 @@ async function openVendorModal(vendorId) {
                   <div>
                     <span class="font-bold text-emerald-700 block mb-1">Included in Package:</span>
                     <ul class="space-y-1 text-gray-600">
-                      ${p.inclusions.map(inc => `<li class="flex items-center gap-1.5"><span class="text-emerald-600 font-bold">✓</span>${inc}</li>`).join("")}
+                      ${p.inclusions.map(inc => `<li class="flex items-center gap-1.5"><span class="text-emerald-600 font-bold">✓</span>${escapeHtml(inc)}</li>`).join("")}
                     </ul>
                   </div>
                   <div>
                     <span class="font-bold text-rose-700 block mb-1">Excluded (Available as Add-on):</span>
                     <ul class="space-y-1 text-gray-600">
-                      ${p.exclusions.map(exc => `<li class="flex items-center gap-1.5"><span class="text-gray-400">✗</span>${exc}</li>`).join("")}
+                      ${p.exclusions.map(exc => `<li class="flex items-center gap-1.5"><span class="text-gray-400">✗</span>${escapeHtml(exc)}</li>`).join("")}
                     </ul>
                   </div>
                 </div>
@@ -672,9 +841,9 @@ async function openVendorModal(vendorId) {
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               ${v.inventory.map(item => `
                 <div class="p-2.5 bg-gray-50 rounded-xl border border-gray-200">
-                  <span class="font-bold text-gray-900 block truncate">${item.item_name}</span>
-                  <span class="text-[11px] text-rose-600 font-semibold">₹${item.rental_price_per_day}/day</span>
-                  <span class="text-[10px] text-gray-500 block">Stock: ${item.available_stock}/${item.total_stock}</span>
+                  <span class="font-bold text-gray-900 block truncate">${escapeHtml(item.item_name)}</span>
+                  <span class="text-[11px] text-rose-600 font-semibold">₹${escapeHtml(item.rental_price_per_day)}/day</span>
+                  <span class="text-[10px] text-gray-500 block">Stock: ${escapeHtml(item.available_stock)}/${escapeHtml(item.total_stock)}</span>
                 </div>
               `).join("")}
             </div>
@@ -683,19 +852,24 @@ async function openVendorModal(vendorId) {
 
         <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
           <span class="font-bold block">Terms & Cancellation Policy:</span>
-          <p class="text-[11px] mt-0.5">${v.terms_and_conditions || 'Standard escrow terms apply. Full refund if cancelled 14 days prior.'}</p>
+          <p class="text-[11px] mt-0.5">${escapeHtml(v.terms_and_conditions || 'Standard escrow terms apply. Full refund if cancelled 14 days prior.')}</p>
         </div>
 
         <div class="pt-4 border-t flex gap-2">
-          <button class="flex-1 py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider" onclick="document.getElementById('vendor-details-modal').classList.add('hidden'); openRfqModal(${v.id}, '${v.business_name}', '${v.category}');">
+          <button class="vendor-quote-btn flex-1 py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider">
             Request Custom Quotation
           </button>
-          <button class="py-3 px-5 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs" onclick="document.getElementById('vendor-details-modal').classList.add('hidden');">
+          <button class="vendor-details-close-btn py-3 px-5 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs">
             Close
           </button>
         </div>
       </div>
     `;
+    content.querySelector(".vendor-quote-btn").onclick = () => {
+      modal.classList.add("hidden");
+      openRfqModal(v.id, v.business_name, v.category);
+    };
+    content.querySelector(".vendor-details-close-btn").onclick = () => modal.classList.add("hidden");
   } catch (e) {
     content.innerHTML = `<div class="p-6 text-center text-red-600 text-xs">Failed to load vendor details.</div>`;
   }
@@ -754,8 +928,8 @@ function renderAiPlannerView() {
                 <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 mb-1">
                   ✨ AI Event Blueprint
                 </span>
-                <h3 class="text-2xl font-black text-gray-900">${bp.theme.name}</h3>
-                <p class="text-xs text-gray-500 mt-1">${bp.city} • ${bp.guests} Guests • Colors: ${bp.theme.colors}</p>
+                <h3 class="text-2xl font-black text-gray-900">${escapeHtml(bp.theme.name)}</h3>
+                <p class="text-xs text-gray-500 mt-1">${escapeHtml(bp.city)} • ${escapeHtml(bp.guests)} Guests • Colors: ${escapeHtml(bp.theme.colors)}</p>
               </div>
               <div class="text-right">
                 <span class="text-xs text-gray-500 block">Total Est. Budget</span>
@@ -769,9 +943,9 @@ function renderAiPlannerView() {
               <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
                 ${Object.entries(bp.itemized_budget).map(([cat, info]) => `
                   <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200">
-                    <span class="font-bold uppercase text-[10px] text-gray-500 block">${cat} (${info.percentage}%)</span>
+                    <span class="font-bold uppercase text-[10px] text-gray-500 block">${escapeHtml(cat)} (${escapeHtml(info.percentage)}%)</span>
                     <span class="font-black text-gray-900 text-sm block">₹${Number(info.amount).toLocaleString('en-IN')}</span>
-                    <span class="text-[10px] text-gray-500">${info.note}</span>
+                    <span class="text-[10px] text-gray-500">${escapeHtml(info.note)}</span>
                   </div>
                 `).join("")}
               </div>
@@ -783,8 +957,8 @@ function renderAiPlannerView() {
               <div class="space-y-2">
                 ${bp.checklist.map(c => `
                   <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl text-xs border border-gray-200">
-                    <span class="px-2 py-0.5 rounded-lg bg-rose-600 text-white font-bold text-[10px]">${c.timeline}</span>
-                    <span class="text-gray-800 font-medium">${c.task}</span>
+                    <span class="px-2 py-0.5 rounded-lg bg-rose-600 text-white font-bold text-[10px]">${escapeHtml(c.timeline)}</span>
+                    <span class="text-gray-800 font-medium">${escapeHtml(c.task)}</span>
                   </div>
                 `).join("")}
               </div>
@@ -797,13 +971,13 @@ function renderAiPlannerView() {
                 ${bp.recommended_vendors.map(v => `
                   <div class="flex items-center justify-between p-3 rounded-2xl border border-gray-200 bg-white">
                     <div class="flex items-center gap-3">
-                      <img src="${v.image_url}" class="w-12 h-12 rounded-xl object-cover" />
+                      <img src="${safeImageUrl(v.image_url)}" class="w-12 h-12 rounded-xl object-cover" />
                       <div>
-                        <h5 class="font-bold text-xs text-gray-900">${v.business_name}</h5>
-                        <p class="text-[10px] text-gray-500">${v.category} • ★ ${v.rating_avg}</p>
+                        <h5 class="font-bold text-xs text-gray-900">${escapeHtml(v.business_name)}</h5>
+                        <p class="text-[10px] text-gray-500">${escapeHtml(v.category)} • ★ ${escapeHtml(v.rating_avg)}</p>
                       </div>
                     </div>
-                    <button class="px-3 py-1.5 bg-rose-50 text-rose-700 font-bold text-xs rounded-lg hover:bg-rose-100" onclick="openRfqModal(${v.id}, '${v.business_name}', '${v.category}');">
+                    <button class="recommended-vendor-quote-btn px-3 py-1.5 bg-rose-50 text-rose-700 font-bold text-xs rounded-lg hover:bg-rose-100" data-vid="${escapeHtml(v.id)}" data-vname="${escapeHtml(v.business_name)}" data-vcat="${escapeHtml(v.category)}">
                       Send RFQ
                     </button>
                   </div>
@@ -812,6 +986,9 @@ function renderAiPlannerView() {
             </div>
           </div>
         `;
+        resultsDiv.querySelectorAll(".recommended-vendor-quote-btn").forEach(button => {
+          button.onclick = () => openRfqModal(button.dataset.vid, button.dataset.vname, button.dataset.vcat);
+        });
       } catch (err) {
         resultsDiv.innerHTML = `<div class="p-6 text-center text-red-600 text-xs">Error generating AI blueprint. Please try again.</div>`;
       }
@@ -825,12 +1002,16 @@ function renderAiPlannerView() {
 function renderMyEventsView() {
   showView("view-my-events");
 
+  const hasActiveEvent = Boolean(state.activeEvent);
+  const tabsNavigation = document.getElementById("event-tabs-navigation");
+  if (tabsNavigation) tabsNavigation.classList.toggle("hidden", !hasActiveEvent);
+
   const tabs = ["budget", "quotations", "tracking", "runsheet", "guests", "collaborators"];
   tabs.forEach(tab => {
     const btn = document.getElementById(`tab-btn-${tab}`);
     const pane = document.getElementById(`tab-pane-${tab}`);
     if (btn && pane) {
-      if (state.activeEventTab === tab) {
+      if (hasActiveEvent && state.activeEventTab === tab) {
         btn.classList.add("active");
         pane.classList.remove("hidden");
       } else {
@@ -844,16 +1025,57 @@ function renderMyEventsView() {
     }
   });
 
+  const titleEl = document.getElementById("event-title-display");
+  const subEl = document.getElementById("event-sub-display");
+  const statusEl = document.getElementById("event-status-display");
+  const retryBtn = document.getElementById("retry-event-load");
+
   if (!state.activeEvent) {
-    const titleEl = document.getElementById("event-title-display");
-    if (titleEl) titleEl.textContent = "No active event yet. Click 'Create New Event' to start!";
+    if (titleEl) titleEl.textContent = "Your Event Workspace";
+    if (subEl) subEl.textContent = "";
+
+    const statusMessages = {
+      empty: "No events yet. Create your first event.",
+      unauthenticated: "Log in to load your events.",
+      idle: "Your events are ready to load."
+    };
+    if (statusEl) {
+      statusEl.hidden = false;
+      if (state.activeEventStatus === "loading") {
+        statusEl.innerHTML = `<span class="inline-block h-4 w-4 align-middle animate-spin rounded-full border-2 border-gray-300 border-t-rose-600" aria-hidden="true"></span> <span class="align-middle">Loading your events…</span>`;
+      } else if (state.activeEventStatus === "error") {
+        statusEl.textContent = `Unable to load your events: ${state.activeEventError}`;
+      } else {
+        statusEl.textContent = statusMessages[state.activeEventStatus] || statusMessages.unauthenticated;
+      }
+    }
+    if (retryBtn) {
+      retryBtn.hidden = state.activeEventStatus !== "error";
+      retryBtn.onclick = () => refreshActiveEvent();
+    }
+
+    const budgetTotal = document.getElementById("budget-total-display");
+    const budgetSpent = document.getElementById("budget-spent-display");
+    if (budgetTotal) budgetTotal.textContent = "—";
+    if (budgetSpent) budgetSpent.textContent = "—";
+    [
+      "budget-items-container",
+      "quotations-list-container",
+      "booking-tracking-container",
+      "runsheet-timeline-container",
+      "guests-list-container"
+    ].forEach(id => {
+      const container = document.getElementById(id);
+      if (container) container.replaceChildren();
+    });
     return;
   }
 
+  if (statusEl) statusEl.hidden = true;
+  if (retryBtn) retryBtn.hidden = true;
+
   // Populate Event Header
   const ev = state.activeEvent;
-  const titleEl = document.getElementById("event-title-display");
-  const subEl = document.getElementById("event-sub-display");
   if (titleEl) titleEl.textContent = ev.title;
   if (subEl) subEl.textContent = `${ev.event_type.toUpperCase()} • ${ev.event_date} • 📍 ${ev.city} (${ev.venue}) • ${ev.guest_count} Guests`;
 
@@ -871,19 +1093,20 @@ function renderEventBudgetTab(ev) {
   const spentDisplay = document.getElementById("budget-spent-display");
   if (!container) return;
 
-  const total = Number(ev.total_budget || 0);
+  const total = Number(ev.total_budget ?? 0);
   let totalSpent = 0;
 
   container.innerHTML = (ev.budget_breakdown || []).map(b => {
     const spent = Number(b.spent_amount || 0);
     totalSpent += spent;
-    const percent = Math.min(100, Math.round((spent / Number(b.allocated_amount)) * 100));
+    const allocated = Number(b.allocated_amount);
+    const percent = allocated > 0 ? Math.min(100, Math.round((spent / allocated) * 100)) : 0;
 
     return `
       <div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-xs space-y-2">
         <div class="flex justify-between items-center text-xs">
-          <span class="font-bold text-gray-800 uppercase tracking-wider">${b.category}</span>
-          <span class="font-extrabold text-gray-900">₹${spent.toLocaleString('en-IN')} / ₹${Number(b.allocated_amount).toLocaleString('en-IN')}</span>
+          <span class="font-bold text-gray-800 uppercase tracking-wider">${escapeHtml(b.category)}</span>
+          <span class="font-extrabold text-gray-900">₹${spent.toLocaleString('en-IN')} / ₹${allocated.toLocaleString('en-IN')}</span>
         </div>
         <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
           <div class="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full" style="width: ${percent}%"></div>
@@ -911,11 +1134,11 @@ function renderEventQuotationsTab(ev) {
     <div class="p-5 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-3">
       <div class="flex items-start justify-between">
         <div class="flex items-center gap-3">
-          <img src="${q.image_url}" class="w-12 h-12 rounded-xl object-cover" />
+          <img src="${safeImageUrl(q.image_url)}" class="w-12 h-12 rounded-xl object-cover" />
           <div>
-            <span class="text-[10px] font-bold uppercase text-rose-600">${q.category}</span>
-            <h4 class="font-bold text-sm text-gray-900">${q.business_name}</h4>
-            <span class="text-xs text-gray-500">Quotation v${q.version} • Status: <strong class="uppercase text-amber-700">${q.status}</strong></span>
+            <span class="text-[10px] font-bold uppercase text-rose-600">${escapeHtml(q.category)}</span>
+            <h4 class="font-bold text-sm text-gray-900">${escapeHtml(q.business_name)}</h4>
+            <span class="text-xs text-gray-500">Quotation v${escapeHtml(q.version)} • Status: <strong class="uppercase text-amber-700">${escapeHtml(q.status)}</strong></span>
           </div>
         </div>
         <div class="text-right">
@@ -926,7 +1149,7 @@ function renderEventQuotationsTab(ev) {
       </div>
 
       <div class="p-3 bg-gray-50 rounded-xl text-xs text-gray-700">
-        <span class="font-bold">Vendor Notes:</span> ${q.terms_and_notes || 'Standard terms.'}
+        <span class="font-bold">Vendor Notes:</span> ${escapeHtml(q.terms_and_notes || 'Standard terms.')}
       </div>
 
       <div class="flex items-center justify-end gap-2 pt-2 border-t">
@@ -968,12 +1191,12 @@ function renderEventTrackingTab(ev) {
     <div class="p-6 bg-white rounded-3xl border border-gray-200 shadow-sm space-y-4">
       <div class="flex items-center justify-between border-b pb-3">
         <div>
-          <span class="text-xs font-bold uppercase text-rose-600">${b.category}</span>
-          <h4 class="text-base font-bold text-gray-900">${b.business_name}</h4>
-          <span class="text-xs text-gray-500">Order #VEDUKA-${b.id} • Total: ₹${Number(b.total_amount).toLocaleString('en-IN')}</span>
+          <span class="text-xs font-bold uppercase text-rose-600">${escapeHtml(b.category)}</span>
+          <h4 class="text-base font-bold text-gray-900">${escapeHtml(b.business_name)}</h4>
+          <span class="text-xs text-gray-500">Order #VEDUKA-${escapeHtml(b.id)} • Total: ₹${Number(b.total_amount).toLocaleString('en-IN')}</span>
         </div>
         <span class="px-3 py-1 bg-emerald-50 text-emerald-800 font-bold text-xs rounded-full border border-emerald-200">
-          ● Status: ${b.booking_status}
+          ● Status: ${escapeHtml(b.booking_status)}
         </span>
       </div>
 
@@ -1015,10 +1238,10 @@ function renderEventRunsheetTab(ev) {
     <div class="space-y-3">
       ${items.map(item => `
         <div class="flex items-center gap-4 p-3.5 bg-white rounded-2xl border border-gray-200 text-xs">
-          <span class="px-2.5 py-1 bg-rose-50 text-rose-700 font-bold rounded-lg">${item.time_slot}</span>
+          <span class="px-2.5 py-1 bg-rose-50 text-rose-700 font-bold rounded-lg">${escapeHtml(item.time_slot)}</span>
           <div class="flex-1">
-            <h5 class="font-bold text-gray-900">${item.activity}</h5>
-            <span class="text-[10px] text-gray-500">Contact: ${item.contact_name || 'Coordinator'} (${item.contact_phone || 'N/A'})</span>
+            <h5 class="font-bold text-gray-900">${escapeHtml(item.activity)}</h5>
+            <span class="text-[10px] text-gray-500">Contact: ${escapeHtml(item.contact_name || 'Coordinator')} (${escapeHtml(item.contact_phone || 'N/A')})</span>
           </div>
           <span class="text-xs ${item.is_completed ? 'text-emerald-600 font-bold' : 'text-gray-400'}">
             ${item.is_completed ? '✓ Completed' : 'Pending'}
@@ -1045,15 +1268,15 @@ function renderEventGuestsTab(ev) {
   container.innerHTML = guests.map(g => `
     <div class="flex items-center justify-between p-3.5 bg-white rounded-2xl border border-gray-200 text-xs">
       <div>
-        <h5 class="font-bold text-gray-900">${g.full_name} (${g.guest_count} guests)</h5>
-        <p class="text-[10px] text-gray-500">Side: ${g.side.toUpperCase()} • Meal: ${g.dietary.toUpperCase()} • Table: ${g.table_number}</p>
-        <span class="inline-block mt-1 font-mono text-[10px] px-2 py-0.5 bg-gray-100 rounded text-gray-700">QR: ${g.qr_code_token}</span>
+        <h5 class="font-bold text-gray-900">${escapeHtml(g.full_name)} (${escapeHtml(g.guest_count)} guests)</h5>
+        <p class="text-[10px] text-gray-500">Side: ${escapeHtml(g.side).toUpperCase()} • Meal: ${escapeHtml(g.dietary).toUpperCase()} • Table: ${escapeHtml(g.table_number)}</p>
+        <span class="inline-block mt-1 font-mono text-[10px] px-2 py-0.5 bg-gray-100 rounded text-gray-700">QR: ${escapeHtml(g.qr_code_token)}</span>
       </div>
       <div class="text-right">
         <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${g.checked_in ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}">
           ${g.checked_in ? '✓ Checked In' : 'Not Checked In'}
         </span>
-        <button class="block mt-1 text-[10px] text-rose-600 hover:underline copy-invite-btn" data-token="${g.qr_code_token}">
+        <button class="block mt-1 text-[10px] text-rose-600 hover:underline copy-invite-btn" data-token="${escapeHtml(g.qr_code_token)}">
           Copy Digital Invite
         </button>
       </div>
@@ -1090,10 +1313,10 @@ async function renderSellerDashboardView() {
       inquiriesContainer.innerHTML = (res.recent_inquiries || []).map(inq => `
         <div class="p-4 bg-white rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
           <div>
-            <span class="text-[10px] font-bold uppercase text-rose-600">${inq.category}</span>
-            <h5 class="font-bold text-sm text-gray-900">${inq.customer_name}</h5>
-            <p class="text-xs text-gray-500">${inq.event_title} (${inq.event_date}) • ${inq.guest_count} Guests</p>
-            <p class="text-xs text-gray-700 italic mt-1">"${inq.requirements}"</p>
+            <span class="text-[10px] font-bold uppercase text-rose-600">${escapeHtml(inq.category)}</span>
+            <h5 class="font-bold text-sm text-gray-900">${escapeHtml(inq.customer_name)}</h5>
+            <p class="text-xs text-gray-500">${escapeHtml(inq.event_title)} (${escapeHtml(inq.event_date)}) • ${escapeHtml(inq.guest_count)} Guests</p>
+            <p class="text-xs text-gray-700 italic mt-1">"${escapeHtml(inq.requirements)}"</p>
           </div>
           <button class="px-4 py-2 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold text-xs rounded-xl shadow-xs" onclick="openQuotationBuilderModal(${inq.id}, ${inq.event_id}, ${inq.customer_id});">
             Build Itemized Quote
@@ -1140,8 +1363,8 @@ async function renderSellerInventoryView() {
             <tbody class="divide-y text-gray-700">
               ${(res.inventory || []).map(item => `
                 <tr>
-                  <td class="p-3 font-bold text-gray-900">${item.item_name}</td>
-                  <td class="p-3">${item.category}</td>
+                  <td class="p-3 font-bold text-gray-900">${escapeHtml(item.item_name)}</td>
+                  <td class="p-3">${escapeHtml(item.category)}</td>
                   <td class="p-3 font-semibold text-emerald-700">${item.available_stock} / ${item.total_stock}</td>
                   <td class="p-3 font-bold">₹${Number(item.rental_price_per_day).toLocaleString('en-IN')}</td>
                   <td class="p-3">₹${Number(item.security_deposit).toLocaleString('en-IN')}</td>
@@ -1175,8 +1398,8 @@ async function renderAdminPanelView() {
       vendorContainer.innerHTML = (res.vendors || []).map(v => `
         <div class="p-4 bg-white rounded-2xl border border-gray-200 flex items-center justify-between text-xs">
           <div>
-            <h5 class="font-bold text-gray-900">${v.business_name} (${v.category})</h5>
-            <span class="text-gray-500">Contact: ${v.email || v.phone} • Status: ${v.kyc_verified ? 'Verified Pro' : 'Pending Verification'}</span>
+            <h5 class="font-bold text-gray-900">${escapeHtml(v.business_name)} (${escapeHtml(v.category)})</h5>
+            <span class="text-gray-500">Contact: ${escapeHtml(v.email || v.phone)} • Status: ${v.kyc_verified ? 'Verified Pro' : 'Pending Verification'}</span>
           </div>
           <button class="px-3 py-1.5 rounded-xl font-bold ${v.kyc_verified ? 'bg-amber-100 text-amber-800' : 'bg-emerald-600 text-white'} admin-verify-btn" data-vid="${v.id}">
             ${v.kyc_verified ? 'Revoke KYC' : 'Verify Vendor KYC'}
@@ -1207,12 +1430,14 @@ function renderProfileView() {
   const nameEl = document.getElementById("profile-name-display");
   const emailEl = document.getElementById("profile-email-display");
   const roleEl = document.getElementById("profile-role-display");
+  const roleSwitch = document.getElementById("switch-role-customer-btn")?.parentElement?.parentElement;
   const speedSlider = document.getElementById("speech-speed-slider");
   const contrastCheck = document.getElementById("high-contrast-toggle");
 
   if (nameEl && state.user) nameEl.textContent = state.user.full_name;
   if (emailEl && state.user) emailEl.textContent = state.user.email || state.user.phone || "No email";
   if (roleEl && state.user) roleEl.textContent = `Active Role: ${state.currentRole.toUpperCase()}`;
+  if (roleSwitch) roleSwitch.classList.toggle("hidden", state.currentRole === "admin");
 
   if (speedSlider) {
     speedSlider.value = state.speechSpeed;
@@ -1388,41 +1613,22 @@ function setupAccessibilityControls() {
 }
 
 // -------------------------------------------------------------
-// AUTH MODAL & QUICK DEMO LOGINS
+// AUTH MODAL & ACCOUNT ACTIONS
 // -------------------------------------------------------------
 function setupAuthEvents() {
   const authModal = document.getElementById("auth-modal");
   const closeAuthBtn = document.getElementById("close-auth-modal");
   const loginForm = document.getElementById("auth-login-form");
   const registerForm = document.getElementById("auth-register-form");
+  const loginTab = document.getElementById("auth-tab-login");
+  const registerTab = document.getElementById("auth-tab-register");
 
   if (closeAuthBtn && authModal) {
-    closeAuthBtn.onclick = () => {
-      authModal.classList.add("hidden");
-      authModal.classList.remove("flex");
-    };
+    closeAuthBtn.onclick = closeAuthModal;
   }
 
-  // Quick Demo Logins
-  const demoCustomerBtn = document.getElementById("demo-login-customer");
-  const demoVendorBtn = document.getElementById("demo-login-vendor");
-  const demoAdminBtn = document.getElementById("demo-login-admin");
-
-  if (demoCustomerBtn) {
-    demoCustomerBtn.onclick = async () => {
-      await performLogin("customer@veduka.ai", "customer123");
-    };
-  }
-  if (demoVendorBtn) {
-    demoVendorBtn.onclick = async () => {
-      await performLogin("nirvana@veduka.ai", "vendor123");
-    };
-  }
-  if (demoAdminBtn) {
-    demoAdminBtn.onclick = async () => {
-      await performLogin("admin@veduka.ai", "admin123");
-    };
-  }
+  if (loginTab) loginTab.onclick = () => setAuthTab("login");
+  if (registerTab) registerTab.onclick = () => setAuthTab("register");
 
   if (loginForm) {
     loginForm.onsubmit = async (e) => {
@@ -1455,8 +1661,9 @@ function setupAuthEvents() {
         api.setUser(res.user);
         state.user = res.user;
         state.currentRole = res.user.role;
-        document.getElementById("auth-modal").classList.add("hidden");
+        closeAuthModal();
         alert("Registration successful! Welcome to Veduka AI.");
+        await refreshActiveEvent();
         renderApp();
       } catch (err) {
         alert(err.message);
@@ -1474,10 +1681,16 @@ function setupAuthEvents() {
   const logoutBtn = document.getElementById("profile-logout-btn");
   if (logoutBtn) {
     logoutBtn.onclick = () => {
+      api.logout().catch(err => console.warn("Server logout could not be confirmed:", err.message));
       api.setToken("");
       api.setUser(null);
       state.user = null;
       state.currentRole = "customer";
+      state.activeEventRequestId += 1;
+      state.activeEvent = null;
+      state.activeEventId = null;
+      state.activeEventError = "";
+      state.activeEventStatus = "unauthenticated";
       navigateTo("home");
     };
   }
@@ -1495,7 +1708,7 @@ async function performLogin(identifier, password) {
     applyTheme();
 
     const authModal = document.getElementById("auth-modal");
-    if (authModal) authModal.classList.add("hidden");
+    if (authModal) closeAuthModal();
 
     await loadNotifications();
     await refreshActiveEvent();
@@ -1527,29 +1740,50 @@ async function switchUserRole(newRole) {
   }
 }
 
+function closeAuthModal() {
+  const modal = document.getElementById("auth-modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+}
+
+function setAuthTab(tab, defaultRole) {
+  const loginTab = document.getElementById("auth-tab-login");
+  const registerTab = document.getElementById("auth-tab-register");
+  const loginForm = document.getElementById("auth-login-form");
+  const registerForm = document.getElementById("auth-register-form");
+  const isRegister = tab === "register";
+  const activeClasses = ["border-b-2", "border-rose-600", "text-rose-600"];
+
+  if (loginTab) {
+    loginTab.classList.toggle("text-gray-500", isRegister);
+    activeClasses.forEach(className => loginTab.classList.toggle(className, !isRegister));
+  }
+  if (registerTab) {
+    registerTab.classList.toggle("text-gray-500", !isRegister);
+    activeClasses.forEach(className => registerTab.classList.toggle(className, isRegister));
+  }
+  if (loginForm) loginForm.classList.toggle("hidden", isRegister);
+  if (registerForm) registerForm.classList.toggle("hidden", !isRegister);
+  const heading = document.getElementById("auth-modal-heading");
+  if (heading) heading.textContent = t(isRegister ? "authCreateAccount" : "authSignIn");
+
+  const roleSelect = document.getElementById("auth-reg-role");
+  if (isRegister && roleSelect && defaultRole) roleSelect.value = defaultRole;
+}
+
 function openAuthModal(initialTab = "login", defaultRole = "customer") {
   const modal = document.getElementById("auth-modal");
   if (!modal) return;
   modal.classList.remove("hidden");
   modal.classList.add("flex");
-
-  const loginTab = document.getElementById("auth-tab-login");
-  const regTab = document.getElementById("auth-tab-register");
-  const loginForm = document.getElementById("auth-login-form");
-  const regForm = document.getElementById("auth-register-form");
-
-  if (initialTab === "register") {
-    if (regTab) regTab.classList.add("border-rose-600", "text-rose-600");
-    if (loginTab) loginTab.classList.remove("border-rose-600", "text-rose-600");
-    if (regForm) regForm.classList.remove("hidden");
-    if (loginForm) loginForm.classList.add("hidden");
-    const roleSelect = document.getElementById("auth-reg-role");
-    if (roleSelect) roleSelect.value = defaultRole;
-  } else {
-    if (loginTab) loginTab.classList.add("border-rose-600", "text-rose-600");
-    if (regTab) regTab.classList.remove("border-rose-600", "text-rose-600");
-    if (loginForm) loginForm.classList.remove("hidden");
-    if (regForm) regForm.classList.add("hidden");
+  setAuthTab(initialTab, initialTab === "register" ? defaultRole : undefined);
+  const heading = document.getElementById("auth-modal-heading");
+  if (heading) {
+    const key = initialTab === "register"
+      ? defaultRole === "vendor" ? "vendorRegister" : "customerRegister"
+      : defaultRole === "vendor" ? "vendorLogin" : "customerLogin";
+    heading.textContent = t(key);
   }
 }
 
