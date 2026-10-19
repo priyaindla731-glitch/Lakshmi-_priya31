@@ -326,54 +326,93 @@
       <div class="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm space-y-6">
         <div class="border-b pb-4">
           <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 uppercase tracking-wider mb-1">
-            🤖 AI Event Architect
+            Veduka Event Planner
           </span>
-          <h2 class="text-2xl font-black text-gray-900">Plan Your Entire Celebration in Seconds</h2>
-          <p class="text-xs text-gray-500 mt-1">Our intelligent planner generates itemized budget allocation, theme color concepts, and bundles verified local providers.</p>
+          <h2 class="text-2xl font-black text-gray-900">Build a practical plan for your celebration</h2>
+          <p class="text-xs text-gray-600 mt-1">Get a budget-aware planning guide using your details and local marketplace package listings where available. Estimates are not confirmed quotations.</p>
+          <p class="mt-2 text-xs text-amber-800" role="note">Plans are generated locally; no external AI provider is configured, and your event details are not sent to a third-party AI service.</p>
         </div>
 
         <form id="ai-standalone-planner-form" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Event Occasion</label>
-              <select id="ai-plan-type" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
-                <option value="wedding">Pellillu / Grand Wedding (వివాహం)</option>
-                <option value="birthday">Birthday Party Celebration (పుట్టినరోజు)</option>
-                <option value="cradle_ceremony">Cradle Ceremony / Barasala (బారసాల)</option>
+              <label for="ai-plan-type" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Event occasion</label>
+              <select id="ai-plan-type" required class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+                <option value="wedding">Wedding / Pellillu</option>
+                <option value="reception">Reception</option>
+                <option value="sangeet">Sangeet / Mehendi</option>
+                <option value="birthday">Birthday</option>
+                <option value="cradle_ceremony">Cradle ceremony / Barasala</option>
+                <option value="engagement">Engagement</option>
+                <option value="housewarming">Housewarming</option>
+                <option value="corporate">Corporate event</option>
+                <option value="other">Other occasion</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Expected Guests</label>
-              <input type="number" id="ai-plan-guests" value="250" min="20" max="5000" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+              <label for="ai-plan-occasion" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Occasion details (optional)</label>
+              <input type="text" id="ai-plan-occasion" maxlength="80" placeholder="e.g. 25th anniversary celebration" class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+            </div>
+            <div>
+              <label for="ai-plan-guests" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Expected guests</label>
+              <input type="number" id="ai-plan-guests" value="100" min="1" max="50000" step="1" required class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
             </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Event Location</label>
-              <select id="ai-plan-city" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
-                <option value="Hyderabad">Hyderabad</option>
-                <option value="Vijayawada">Vijayawada</option>
-                <option value="Visakhapatnam">Visakhapatnam</option>
-                <option value="Warangal">Warangal</option>
-              </select>
+              <label for="ai-plan-city" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Event location</label>
+              <input type="text" id="ai-plan-city" value="Hyderabad" maxlength="120" required class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
             </div>
             <div>
-              <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Budget Tier</label>
-              <select id="ai-plan-tier" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
-                <option value="budget">Smart Budget (Best Value / plate)</option>
-                <option value="premium" selected>Premium Celebration (Balanced Luxury & Elegance)</option>
-                <option value="luxury">Royal Luxury (Grand production, celebrity artists)</option>
+              <label for="ai-plan-date" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Event date (optional)</label>
+              <input type="date" id="ai-plan-date" class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="ai-plan-budget" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Total budget (INR)</label>
+              <input type="number" id="ai-plan-budget" value="300000" min="1" max="1000000000" step="1" required class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+            </div>
+            <div>
+              <label for="ai-plan-language" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Plan language</label>
+              <select id="ai-plan-language" class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold">
+                <option value="en">English</option>
+                <option value="te">తెలుగు</option>
+                <option value="hi">हिन्दी</option>
               </select>
             </div>
           </div>
 
-          <button type="submit" class="w-full py-4 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-2xl text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition">
-            ✨ Generate AI Event Blueprint
+          <details class="rounded-2xl border border-gray-200 p-4">
+            <summary class="cursor-pointer text-sm font-bold text-gray-800">Optional preferences</summary>
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="ai-plan-venue" class="block text-xs font-bold text-gray-700 mb-1">Venue type</label>
+                <input type="text" id="ai-plan-venue" maxlength="240" placeholder="e.g. outdoor garden, community hall" class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+              </div>
+              <div>
+                <label for="ai-plan-food" class="block text-xs font-bold text-gray-700 mb-1">Food preference</label>
+                <input type="text" id="ai-plan-food" maxlength="240" placeholder="e.g. vegetarian, regional menu" class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+              </div>
+              <div>
+                <label for="ai-plan-decor" class="block text-xs font-bold text-gray-700 mb-1">Decoration preference</label>
+                <input type="text" id="ai-plan-decor" maxlength="240" placeholder="e.g. floral, low-waste" class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+              </div>
+              <div>
+                <label for="ai-plan-theme" class="block text-xs font-bold text-gray-700 mb-1">Theme preference</label>
+                <input type="text" id="ai-plan-theme" maxlength="240" placeholder="e.g. garden, classic, modern" class="w-full min-h-11 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+              </div>
+            </div>
+          </details>
+
+          <button id="ai-plan-submit" type="submit" class="w-full min-h-12 py-4 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-2xl text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition">
+            Create my event plan
           </button>
         </form>
 
-        <div id="ai-standalone-results" class="hidden"></div>
+        <div id="ai-standalone-results" class="hidden" role="region" aria-live="polite" aria-label="Event plan results"></div>
       </div>
 
     </div>
@@ -917,9 +956,14 @@
             <label class="block text-xs font-bold text-gray-700 mb-1">Event Type</label>
             <select id="new-event-type" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
               <option value="wedding">Wedding / Pelli</option>
+              <option value="reception">Reception</option>
               <option value="sangeet">Sangeet & Mehendi</option>
               <option value="birthday">Birthday Party</option>
               <option value="cradle_ceremony">Cradle Ceremony (Barasala)</option>
+              <option value="engagement">Engagement</option>
+              <option value="housewarming">Housewarming</option>
+              <option value="corporate">Corporate event</option>
+              <option value="other">Other occasion</option>
             </select>
           </div>
           <div>
@@ -935,6 +979,16 @@
           <div>
             <label class="block text-xs font-bold text-gray-700 mb-1">Budget (₹)</label>
             <input type="number" id="new-event-budget" value="350000" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label for="new-event-guests" class="block text-xs font-bold text-gray-700 mb-1">Expected guests</label>
+            <input type="number" id="new-event-guests" value="150" min="1" max="50000" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
+          </div>
+          <div>
+            <label for="new-event-theme" class="block text-xs font-bold text-gray-700 mb-1">Theme (optional)</label>
+            <input type="text" id="new-event-theme" maxlength="240" class="w-full p-2 bg-gray-50 rounded-xl border text-xs">
           </div>
         </div>
         <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md">
@@ -1112,6 +1166,8 @@
         const date = document.getElementById("new-event-date").value;
         const city = document.getElementById("new-event-city").value;
         const budget = document.getElementById("new-event-budget").value;
+        const guests = document.getElementById("new-event-guests").value;
+        const theme = document.getElementById("new-event-theme").value;
 
         try {
           await api.createEvent({
@@ -1119,7 +1175,9 @@
             event_type: type,
             event_date: date,
             city: city,
-            total_budget: parseFloat(budget)
+            total_budget: parseFloat(budget),
+            guest_count: parseInt(guests, 10),
+            theme_name: theme
           });
           alert("Event created successfully! Switched to your new event workspace.");
           document.getElementById("create-event-modal").classList.add("hidden");

@@ -25,6 +25,7 @@ const state = {
   activeEventRequestId: 0,
   notifications: []
 };
+let discoverSearchTimer = null;
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -45,6 +46,7 @@ function safeImageUrl(value) {
 document.addEventListener("DOMContentLoaded", async () => {
   applyTheme();
   setupNavEvents();
+  setupVendorFilters();
   setupLanguageSwitcher();
   setupAuthEvents();
   setupVoiceAssistant();
@@ -125,6 +127,26 @@ function setupNavEvents() {
   const vendorsBtn = document.getElementById("hero-vendors-btn");
   if (vendorsBtn) {
     vendorsBtn.addEventListener("click", () => navigateTo("discover"));
+  }
+}
+
+function setupVendorFilters() {
+  const citySelect = document.getElementById("discover-city-select");
+  const searchInput = document.getElementById("discover-search-input");
+
+  if (citySelect) {
+    citySelect.addEventListener("change", async () => {
+      state.selectedCity = citySelect.value;
+      await loadVendors();
+    });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      state.searchQuery = searchInput.value.trim();
+      clearTimeout(discoverSearchTimer);
+      discoverSearchTimer = setTimeout(loadVendors, 300);
+    });
   }
 }
 
@@ -506,6 +528,18 @@ function renderFeaturedVendors() {
 // -------------------------------------------------------------
 function renderDiscoverView() {
   showView("view-discover");
+  const citySelect = document.getElementById("discover-city-select");
+  if (citySelect) {
+    if (![...citySelect.options].some(option => option.value === state.selectedCity)) {
+      const customCity = document.createElement("option");
+      customCity.value = state.selectedCity;
+      customCity.textContent = state.selectedCity;
+      citySelect.add(customCity, 1);
+    }
+    citySelect.value = state.selectedCity;
+  }
+  const searchInput = document.getElementById("discover-search-input");
+  if (searchInput) searchInput.value = state.searchQuery;
   renderCategoriesPills();
   renderVendorCatalog();
 }
@@ -893,107 +927,189 @@ function renderAiPlannerView() {
   showView("view-ai-planner");
 
   const form = document.getElementById("ai-standalone-planner-form");
-  if (form) {
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      const eventType = document.getElementById("ai-plan-type").value;
-      const guests = document.getElementById("ai-plan-guests").value;
-      const city = document.getElementById("ai-plan-city").value;
-      const budgetTier = document.getElementById("ai-plan-tier").value;
+  if (!form) return;
 
-      const resultsDiv = document.getElementById("ai-standalone-results");
-      resultsDiv.classList.remove("hidden");
-      resultsDiv.innerHTML = `
-        <div class="p-8 bg-amber-50 rounded-3xl border border-amber-200 text-center animate-pulse">
-          <div class="text-3xl mb-2">🤖</div>
-          <h4 class="font-bold text-amber-900 text-base">Veduka AI is analyzing your celebration requirements...</h4>
-          <p class="text-xs text-amber-700 mt-1">Calculating itemized budget allocations and checking registered provider availability.</p>
-        </div>
-      `;
-
-      try {
-        const res = await api.planEvent({
-          event_type: eventType,
-          guests: parseInt(guests),
-          city: city,
-          budget_tier: budgetTier,
-          language: state.currentLang
-        });
-
-        const bp = res.blueprint;
-        resultsDiv.innerHTML = `
-          <div class="p-6 sm:p-8 bg-white rounded-3xl border-2 border-rose-100 shadow-xl space-y-6">
-            <div class="flex items-start justify-between border-b pb-4">
-              <div>
-                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 mb-1">
-                  ✨ AI Event Blueprint
-                </span>
-                <h3 class="text-2xl font-black text-gray-900">${escapeHtml(bp.theme.name)}</h3>
-                <p class="text-xs text-gray-500 mt-1">${escapeHtml(bp.city)} • ${escapeHtml(bp.guests)} Guests • Colors: ${escapeHtml(bp.theme.colors)}</p>
-              </div>
-              <div class="text-right">
-                <span class="text-xs text-gray-500 block">Total Est. Budget</span>
-                <span class="text-2xl font-black text-rose-600">₹${Number(bp.total_estimated_budget).toLocaleString('en-IN')}</span>
-              </div>
-            </div>
-
-            <!-- Itemized Budget Breakdown -->
-            <div>
-              <h4 class="font-bold text-sm text-gray-900 mb-3">Transparent Itemized Budget Allocation</h4>
-              <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
-                ${Object.entries(bp.itemized_budget).map(([cat, info]) => `
-                  <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200">
-                    <span class="font-bold uppercase text-[10px] text-gray-500 block">${escapeHtml(cat)} (${escapeHtml(info.percentage)}%)</span>
-                    <span class="font-black text-gray-900 text-sm block">₹${Number(info.amount).toLocaleString('en-IN')}</span>
-                    <span class="text-[10px] text-gray-500">${escapeHtml(info.note)}</span>
-                  </div>
-                `).join("")}
-              </div>
-            </div>
-
-            <!-- 4-Phase Checklist -->
-            <div>
-              <h4 class="font-bold text-sm text-gray-900 mb-2">Event Preparation Timeline & Checklist</h4>
-              <div class="space-y-2">
-                ${bp.checklist.map(c => `
-                  <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl text-xs border border-gray-200">
-                    <span class="px-2 py-0.5 rounded-lg bg-rose-600 text-white font-bold text-[10px]">${escapeHtml(c.timeline)}</span>
-                    <span class="text-gray-800 font-medium">${escapeHtml(c.task)}</span>
-                  </div>
-                `).join("")}
-              </div>
-            </div>
-
-            <!-- Matched Local Providers -->
-            <div>
-              <h4 class="font-bold text-sm text-gray-900 mb-2">Recommended Registered Providers for this Blueprint</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                ${bp.recommended_vendors.map(v => `
-                  <div class="flex items-center justify-between p-3 rounded-2xl border border-gray-200 bg-white">
-                    <div class="flex items-center gap-3">
-                      <img src="${safeImageUrl(v.image_url)}" class="w-12 h-12 rounded-xl object-cover" />
-                      <div>
-                        <h5 class="font-bold text-xs text-gray-900">${escapeHtml(v.business_name)}</h5>
-                        <p class="text-[10px] text-gray-500">${escapeHtml(v.category)} • ★ ${escapeHtml(v.rating_avg)}</p>
-                      </div>
-                    </div>
-                    <button class="recommended-vendor-quote-btn px-3 py-1.5 bg-rose-50 text-rose-700 font-bold text-xs rounded-lg hover:bg-rose-100" data-vid="${escapeHtml(v.id)}" data-vname="${escapeHtml(v.business_name)}" data-vcat="${escapeHtml(v.category)}">
-                      Send RFQ
-                    </button>
-                  </div>
-                `).join("")}
-              </div>
-            </div>
-          </div>
-        `;
-        resultsDiv.querySelectorAll(".recommended-vendor-quote-btn").forEach(button => {
-          button.onclick = () => openRfqModal(button.dataset.vid, button.dataset.vname, button.dataset.vcat);
-        });
-      } catch (err) {
-        resultsDiv.innerHTML = `<div class="p-6 text-center text-red-600 text-xs">Error generating AI blueprint. Please try again.</div>`;
-      }
-    };
+  const resultsDiv = document.getElementById("ai-standalone-results");
+  const submitButton = document.getElementById("ai-plan-submit");
+  const dateInput = document.getElementById("ai-plan-date");
+  if (dateInput && !dateInput.min) {
+    const today = new Date();
+    dateInput.min = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   }
+
+  const money = amount => `₹${Number(amount).toLocaleString("en-IN")}`;
+  const renderPlan = bp => {
+    const vendorCards = bp.recommended_vendors.length
+      ? bp.recommended_vendors.map(v => `
+          <div class="flex items-center justify-between gap-3 p-3 rounded-2xl border border-gray-200 bg-white">
+            <div class="flex items-center gap-3 min-w-0">
+              <img src="${safeImageUrl(v.image_url)}" alt="" class="w-12 h-12 rounded-xl object-cover shrink-0" />
+              <div class="min-w-0">
+                <h5 class="font-bold text-xs text-gray-900 truncate">${escapeHtml(v.business_name)}</h5>
+                <p class="text-[10px] text-gray-600">${escapeHtml(v.category)} · ${money(v.starting_price)} ${escapeHtml(v.pricing_model === "per_plate" ? "per guest" : v.unit)}</p>
+                <p class="text-[10px] text-gray-500">${escapeHtml(v.price_note)}</p>
+              </div>
+            </div>
+            <button type="button" class="planner-vendor-search-btn shrink-0 px-3 py-2 min-h-10 bg-rose-50 text-rose-700 font-bold text-xs rounded-lg hover:bg-rose-100" data-category="${escapeHtml(v.category)}">
+              Find vendors
+            </button>
+          </div>
+        `).join("")
+      : `<p class="text-xs text-gray-600">No active package listings were found for ${escapeHtml(bp.city)}. You can still search the marketplace for local vendors.</p>`;
+
+    const section = (title, content) => `
+      <section>
+        <h4 class="font-bold text-sm text-gray-900 mb-2">${title}</h4>
+        <ul class="space-y-2">${content.map(item => `<li class="p-3 bg-gray-50 rounded-xl text-xs border border-gray-200 text-gray-800">${escapeHtml(item)}</li>`).join("")}</ul>
+      </section>`;
+    const shortfall = bp.budget_shortfall > 0
+      ? `<div class="p-4 rounded-2xl border border-amber-300 bg-amber-50 text-amber-950 text-xs"><strong>Budget check:</strong> The indicative reference estimate is ${money(bp.reference_estimated_total)}, which is ${money(bp.budget_shortfall)} above your budget. The category allocations below are capped at your budget; they are not a promise that the full event can be delivered at that amount. ${escapeHtml(bp.budget_alternatives)}</div>`
+      : `<div class="p-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-950 text-xs">The indicative reference estimate is within your budget. Confirm final prices and availability with vendors.</div>`;
+
+    resultsDiv.innerHTML = `
+      <div class="p-5 sm:p-8 bg-white rounded-3xl border-2 border-rose-100 shadow-xl space-y-6">
+        <header class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b pb-4">
+          <div class="min-w-0">
+            <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 mb-2">Local planning estimate</span>
+            <h3 class="text-xl sm:text-2xl font-black text-gray-900">${escapeHtml(bp.occasion)}</h3>
+            <p class="text-sm text-gray-700 mt-1">${escapeHtml(bp.summary)}</p>
+            <p class="text-xs text-gray-600 mt-1">${escapeHtml(bp.guests)} guests · ${escapeHtml(bp.city)}${bp.event_date ? ` · ${escapeHtml(bp.event_date)}` : ""}</p>
+          </div>
+          <div class="sm:text-right shrink-0">
+            <span class="text-xs text-gray-600 block">Allocated estimate (INR)</span>
+            <span class="text-2xl font-black text-rose-700">${money(bp.total_estimated_budget)}</span>
+            <span class="text-xs text-gray-600 block">Budget: ${money(bp.total_budget)}</span>
+          </div>
+        </header>
+        ${shortfall}
+        <section>
+          <h4 class="font-bold text-sm text-gray-900 mb-2">Estimated expenses by category</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            ${Object.entries(bp.itemized_budget).map(([category, info]) => `
+              <article class="p-4 bg-stone-50 rounded-2xl border border-stone-200">
+                <h5 class="font-bold text-xs text-gray-900">${escapeHtml(info.label)}</h5>
+                <p class="font-black text-lg text-gray-900 mt-1">${money(info.amount)}</p>
+                <p class="text-xs text-gray-600">${escapeHtml(info.percentage)}% of allocated estimate · ${info.basis === "marketplace_listing" ? "marketplace reference" : "planning estimate"}</p>
+                <p class="text-xs text-gray-600 mt-2">${escapeHtml(info.note)}</p>
+              </article>
+            `).join("")}
+          </div>
+          <p class="text-xs text-gray-600 mt-3">${escapeHtml(bp.budget_note)}</p>
+        </section>
+        ${section("Venue suggestions", bp.venue_suggestions)}
+        ${section("Decoration suggestions", bp.decoration_suggestions)}
+        ${section("Catering and guest arrangements", bp.guest_arrangements)}
+        ${section("Photography", bp.photography_suggestions)}
+        ${section("Entertainment", bp.entertainment_suggestions)}
+        <section>
+          <h4 class="font-bold text-sm text-gray-900 mb-2">Suggested timeline and next steps</h4>
+          <ol class="space-y-2">
+            ${bp.checklist.map(item => `
+              <li class="flex flex-col sm:flex-row sm:items-start gap-2 p-3 bg-gray-50 rounded-xl text-xs border border-gray-200">
+                <span class="sm:min-w-36 font-bold text-rose-800">${escapeHtml(item.timeline)}</span>
+                <span class="text-gray-800">${escapeHtml(item.task)}</span>
+              </li>
+            `).join("")}
+          </ol>
+        </section>
+        <section>
+          <h4 class="font-bold text-sm text-gray-900 mb-2">Marketplace references</h4>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${vendorCards}</div>
+          <div class="flex flex-wrap gap-2 mt-3">
+            ${["catering", "venues", "decorations", "photography", "dj_music"].map(category => `
+              <button type="button" class="planner-vendor-search-btn px-3 py-2 min-h-10 rounded-xl border border-rose-200 text-rose-800 text-xs font-bold hover:bg-rose-50" data-category="${category}">
+                Search ${escapeHtml(({catering:"catering", venues:"venues", decorations:"decor", photography:"photography", dj_music:"entertainment"})[category])}
+              </button>
+            `).join("")}
+          </div>
+        </section>
+        <div class="flex flex-wrap gap-2 border-t pt-4">
+          <button type="button" id="planner-regenerate-btn" class="px-4 py-2.5 min-h-11 rounded-xl bg-rose-700 text-white text-xs font-bold hover:bg-rose-800">Regenerate with current inputs</button>
+          <button type="button" id="planner-edit-btn" class="px-4 py-2.5 min-h-11 rounded-xl border border-gray-300 text-gray-800 text-xs font-bold hover:bg-gray-50">Edit inputs</button>
+          ${state.user && state.user.role === "customer" && api.getToken() ? `<button type="button" id="planner-use-workspace-btn" class="px-4 py-2.5 min-h-11 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800">Use in event workspace</button>` : ""}
+        </div>
+        <p class="text-xs text-gray-600">Regenerating does not create or save an event. Use the workspace action and confirm the event form to create one.</p>
+      </div>
+    `;
+
+    resultsDiv.querySelectorAll(".planner-vendor-search-btn").forEach(button => {
+      button.onclick = async () => {
+        state.selectedCategory = button.dataset.category;
+        state.selectedCity = bp.city;
+        state.searchQuery = "";
+        await loadVendors();
+        navigateTo("discover");
+      };
+    });
+    const regenerateButton = document.getElementById("planner-regenerate-btn");
+    if (regenerateButton) regenerateButton.onclick = () => form.requestSubmit();
+    const editButton = document.getElementById("planner-edit-btn");
+    if (editButton) editButton.onclick = () => {
+      document.getElementById("ai-plan-type").focus();
+      form.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    const workspaceButton = document.getElementById("planner-use-workspace-btn");
+    if (workspaceButton) workspaceButton.onclick = () => {
+      const modal = document.getElementById("create-event-modal");
+      document.getElementById("new-event-title").value = bp.occasion;
+      document.getElementById("new-event-type").value = bp.event_type;
+      document.getElementById("new-event-date").value = bp.event_date || "";
+      document.getElementById("new-event-city").value = bp.city;
+      document.getElementById("new-event-budget").value = bp.total_budget;
+      document.getElementById("new-event-guests").value = bp.guests;
+      document.getElementById("new-event-theme").value = bp.preferences.theme_preference;
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    };
+  };
+
+  form.onsubmit = async event => {
+    event.preventDefault();
+    if (submitButton.disabled) return;
+    const payload = {
+      event_type: document.getElementById("ai-plan-type").value,
+      occasion: document.getElementById("ai-plan-occasion").value.trim(),
+      guests: Number(document.getElementById("ai-plan-guests").value),
+      city: document.getElementById("ai-plan-city").value.trim(),
+      event_date: dateInput.value,
+      total_budget: Number(document.getElementById("ai-plan-budget").value),
+      language: document.getElementById("ai-plan-language").value,
+      venue_type: document.getElementById("ai-plan-venue").value.trim(),
+      food_preference: document.getElementById("ai-plan-food").value.trim(),
+      decoration_preference: document.getElementById("ai-plan-decor").value.trim(),
+      theme_preference: document.getElementById("ai-plan-theme").value.trim()
+    };
+    submitButton.disabled = true;
+    submitButton.setAttribute("aria-busy", "true");
+    submitButton.textContent = "Preparing your planning estimate…";
+    resultsDiv.classList.remove("hidden");
+    resultsDiv.innerHTML = `
+      <div class="p-8 bg-amber-50 rounded-3xl border border-amber-200 text-center" role="status">
+        <div class="text-3xl mb-2" aria-hidden="true">⌛</div>
+        <h3 class="font-bold text-amber-950 text-base">Preparing your event plan…</h3>
+        <p class="text-sm text-amber-900 mt-1">Matching your details with available local package listings.</p>
+      </div>`;
+    try {
+      const response = await api.planEvent(payload);
+      if (!response.blueprint || response.planner_mode !== "local_estimate") {
+        throw new Error("The planner returned an unexpected response. Please retry.");
+      }
+      renderPlan(response.blueprint);
+    } catch (error) {
+      const message = error && error.message ? error.message : "An unexpected error occurred.";
+      resultsDiv.innerHTML = `
+        <div class="p-5 rounded-2xl border border-red-300 bg-red-50 text-red-950" role="alert">
+          <h3 class="font-bold text-base">We could not prepare your plan</h3>
+          <p class="text-sm mt-1">${escapeHtml(message)}</p>
+          <button type="button" id="planner-retry-btn" class="mt-3 px-4 py-2.5 min-h-11 rounded-xl bg-red-800 text-white text-xs font-bold hover:bg-red-900">Retry with these inputs</button>
+        </div>`;
+      document.getElementById("planner-retry-btn").onclick = () => form.requestSubmit();
+    } finally {
+      submitButton.disabled = false;
+      submitButton.removeAttribute("aria-busy");
+      submitButton.textContent = "Create my event plan";
+    }
+  };
 }
 
 // -------------------------------------------------------------

@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import datetime
+import math
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -449,99 +450,298 @@ def compare_vendors():
 # -------------------------------------------------------------
 # 3. AI EVENT ARCHITECT & SELLER ASSISTANT
 # -------------------------------------------------------------
+PLANNER_BUDGETS_PER_GUEST = {
+    "wedding": 3200,
+    "reception": 2400,
+    "sangeet": 2100,
+    "birthday": 1400,
+    "cradle_ceremony": 1700,
+    "engagement": 1900,
+    "housewarming": 1100,
+    "corporate": 2600,
+    "other": 1800,
+}
+PLANNER_CATEGORY_SHARES = {
+    "wedding": {"catering": 0.38, "venues": 0.22, "decorations": 0.17, "photography": 0.13, "dj_music": 0.10},
+    "reception": {"catering": 0.40, "venues": 0.23, "decorations": 0.16, "photography": 0.12, "dj_music": 0.09},
+    "sangeet": {"catering": 0.32, "venues": 0.22, "decorations": 0.20, "photography": 0.14, "dj_music": 0.12},
+    "birthday": {"catering": 0.34, "venues": 0.24, "decorations": 0.20, "photography": 0.12, "dj_music": 0.10},
+    "cradle_ceremony": {"catering": 0.35, "venues": 0.23, "decorations": 0.19, "photography": 0.14, "dj_music": 0.09},
+    "engagement": {"catering": 0.36, "venues": 0.22, "decorations": 0.18, "photography": 0.14, "dj_music": 0.10},
+    "housewarming": {"catering": 0.38, "venues": 0.12, "decorations": 0.20, "photography": 0.12, "dj_music": 0.18},
+    "corporate": {"catering": 0.30, "venues": 0.32, "decorations": 0.10, "photography": 0.12, "dj_music": 0.16},
+    "other": {"catering": 0.36, "venues": 0.23, "decorations": 0.17, "photography": 0.14, "dj_music": 0.10},
+}
+PLANNER_CATEGORY_LABELS = {
+    "en": {"catering": "Catering", "venues": "Venue", "decorations": "Decorations", "photography": "Photography", "dj_music": "Entertainment"},
+    "te": {"catering": "ఆహారం", "venues": "వేదిక", "decorations": "అలంకరణ", "photography": "ఫోటోగ్రఫీ", "dj_music": "వినోదం"},
+    "hi": {"catering": "खानपान", "venues": "स्थल", "decorations": "सजावट", "photography": "फ़ोटोग्राफ़ी", "dj_music": "मनोरंजन"},
+}
+
+def _planner_optional_text(data, field, label, max_length=240):
+    value = data.get(field, "")
+    if not isinstance(value, str):
+        return None, f"{label} must be text."
+    value = value.strip()
+    if len(value) > max_length:
+        return None, f"{label} must be {max_length} characters or fewer."
+    return value, None
+
+def _planner_vendor_prices(conn, city, guests, market_price_note):
+    vendors = {}
+    estimates = {}
+    for category in ("catering", "venues", "decorations", "photography", "dj_music"):
+        records = conn.execute(
+            """
+            SELECT vp.id, vp.business_name, vp.category, vp.cities,
+                   vp.rating_avg, vp.review_count, vp.image_url,
+                   p.title AS package_title, p.base_price, p.pricing_model, p.unit
+            FROM vendor_profiles vp
+            JOIN packages p ON p.vendor_id = vp.id
+            WHERE p.category = ? AND p.is_active = 1
+              AND instr(LOWER(vp.cities), LOWER(?)) > 0
+            ORDER BY p.base_price ASC
+            """,
+            (category, city),
+        ).fetchall()
+        if not records:
+            continue
+
+        selected = records[0]
+        base_price = float(selected["base_price"])
+        estimated_cost = base_price * guests if selected["pricing_model"] == "per_plate" else base_price
+        estimates[category] = max(0, round(estimated_cost))
+        vendors[category] = {
+            "id": selected["id"],
+            "business_name": selected["business_name"],
+            "category": selected["category"],
+            "cities": selected["cities"],
+            "rating_avg": selected["rating_avg"],
+            "review_count": selected["review_count"],
+            "image_url": selected["image_url"],
+            "package_title": selected["package_title"],
+            "starting_price": round(base_price),
+            "pricing_model": selected["pricing_model"],
+            "unit": selected["unit"],
+            "estimated_package_cost": estimates[category],
+            "price_note": market_price_note,
+        }
+    return vendors, estimates
+
+def _planner_text(language, occasion, city, guests, event_date):
+    localizations = {
+        "en": {
+            "summary": f"A {occasion} plan for {guests} guests in {city}" + (f" on {event_date}." if event_date else "."),
+            "venue": "Compare accessible venues near your preferred location; confirm capacity, power, parking, weather backup, and setup access before paying a deposit.",
+            "decor": "Choose reusable, locally sourced decor and focus the budget on one photo-friendly focal area.",
+            "food": "Confirm dietary requirements and serving style with the caterer; plan one service station per 75–100 guests to reduce queues.",
+            "photo": "For weddings and milestone occasions, request coverage hours, deliverables, backup equipment, and travel costs in a written quote.",
+            "entertainment": "Match sound and entertainment to the venue's noise rules and the occasion; keep a simple playlist or emcee plan as a low-cost option.",
+            "budget_tip": "The indicative reference estimate is above your budget. Reduce guest count, simplify decor, choose a community venue, or request itemized lower-cost packages.",
+            "timeline": ["Confirm date, guest count, and spending limit", "Shortlist and visit venues; request written quotes", "Confirm food, accessibility, decor, and service timings", "Reconfirm headcount, vendor arrival times, and contingency plan"],
+            "weeks": ["12–16 weeks before", "8–10 weeks before", "4–6 weeks before", "1 week before"],
+            "budget_shortfall": "Indicative cost is above budget by",
+            "budget_note": "Indicative planning estimates, not confirmed vendor quotations. Marketplace package listings are reference prices; confirm final pricing and availability with vendors.",
+            "venue_type": "Preferred venue type",
+            "decoration_preference": "Decoration preference",
+            "theme_preference": "Theme preference",
+            "food_preference": "Food preference",
+            "market_price_note": "Listed marketplace starting price; confirm availability and final terms with the vendor.",
+            "guest_count_note": f"{guests} guests: use RSVP tracking and confirm dietary/accessibility needs.",
+        },
+        "te": {
+            "summary": f"{city}లో {guests} మంది అతిథుల కోసం {occasion} ప్రణాళిక" + (f", తేదీ {event_date}." if event_date else "."),
+            "venue": "మీ ప్రదేశానికి దగ్గరలో సరిపడే వేదికలను పరిశీలించండి; చెల్లింపుకు ముందు సామర్థ్యం, విద్యుత్, పార్కింగ్, వర్షపు ప్రత్యామ్నాయం, ఏర్పాట్ల సమయాన్ని నిర్ధారించండి.",
+            "decor": "స్థానికంగా లభించే పునర్వినియోగ అలంకరణలను ఎంచుకుని, ఫోటోలకు అనువైన ఒక ప్రధాన అలంకరణకు బడ్జెట్ కేటాయించండి.",
+            "food": "ఆహార అభిరుచులు, వడ్డించే విధానాన్ని క్యాటరర్‌తో నిర్ధారించండి; క్యూలు తగ్గించేందుకు ప్రతి 75–100 మందికి ఒక సర్వింగ్ కౌంటర్‌ను పరిగణించండి.",
+            "photo": "వివాహం లేదా ప్రత్యేక వేడుకలకు ఫోటోగ్రఫీ సమయం, అందించే ఫోటోలు, ప్రత్యామ్నాయ పరికరాలు, ప్రయాణ ఖర్చులపై లిఖితపూర్వక కోట్ తీసుకోండి.",
+            "entertainment": "వేదిక నియమాలు, వేడుకకు సరిపోయే సంగీతం లేదా వినోదాన్ని ఎంచుకోండి; తక్కువ ఖర్చుకు ప్లేలిస్ట్ లేదా వ్యాఖ్యాతను పరిగణించండి.",
+            "budget_tip": "సూచనాత్మక అంచనా మీ బడ్జెట్ కంటే ఎక్కువగా ఉంది. అతిథుల సంఖ్య తగ్గించడం, అలంకరణ సరళీకరించడం, కమ్యూనిటీ వేదికను ఎంచుకోవడం లేదా తక్కువ ధరల ప్యాకేజీల కోట్ కోరడం ద్వారా ఖర్చు తగ్గించండి.",
+            "timeline": ["తేదీ, అతిథుల సంఖ్య, ఖర్చు పరిమితిని నిర్ధారించండి", "వేదికలను పరిశీలించి, లిఖితపూర్వక కోట్లు కోరండి", "ఆహారం, అందుబాటు, అలంకరణ, సమయాలను ఖరారు చేయండి", "అతిథుల సంఖ్య, సరఫరాదారుల రాక, ప్రత్యామ్నాయ ప్రణాళికను మళ్లీ నిర్ధారించండి"],
+            "weeks": ["12–16 వారాల ముందు", "8–10 వారాల ముందు", "4–6 వారాల ముందు", "1 వారం ముందు"],
+            "budget_shortfall": "సూచనాత్మక అంచనా బడ్జెట్‌ను మించిన మొత్తం",
+            "budget_note": "ఇవి సూచనాత్మక ప్రణాళిక అంచనాలు మాత్రమే; ఖరారైన విక్రేత కోట్లు కావు. మార్కెట్‌ప్లేస్ ప్యాకేజీ ధరలు సూచనార్థం మాత్రమే; తుది ధర మరియు లభ్యతను విక్రేతతో నిర్ధారించండి.",
+            "venue_type": "ఇష్టమైన వేదిక రకం",
+            "decoration_preference": "అలంకరణ అభిరుచి",
+            "theme_preference": "థీమ్ అభిరుచి",
+            "food_preference": "ఆహార అభిరుచి",
+            "market_price_note": "మార్కెట్‌ప్లేస్‌లో చూపిన ప్రారంభ ధర; లభ్యత మరియు తుది నిబంధనలను విక్రేతతో నిర్ధారించండి.",
+            "guest_count_note": f"{guests} మంది అతిథులు: RSVPలను నమోదు చేసి, ఆహార మరియు అందుబాటు అవసరాలను నిర్ధారించండి.",
+        },
+        "hi": {
+            "summary": f"{city} में {guests} मेहमानों के लिए {occasion} की योजना" + (f", तारीख {event_date}।" if event_date else "।"),
+            "venue": "अपने स्थान के पास उपयुक्त स्थल देखें; अग्रिम भुगतान से पहले क्षमता, बिजली, पार्किंग, मौसम का विकल्प और सेटअप समय की पुष्टि करें।",
+            "decor": "स्थानीय और पुनः उपयोग योग्य सजावट चुनें तथा बजट का मुख्य भाग एक आकर्षक केंद्र-बिंदु पर लगाएँ।",
+            "food": "कैटरर के साथ खानपान संबंधी आवश्यकताओं और परोसने की व्यवस्था तय करें; कतारें कम करने के लिए हर 75–100 मेहमानों पर एक सर्विंग स्टेशन रखें।",
+            "photo": "शादी या विशेष अवसर के लिए कवरेज के घंटे, डिलीवरी, बैकअप उपकरण और यात्रा शुल्क लिखित कोट में लें।",
+            "entertainment": "स्थल के नियम और अवसर के अनुसार संगीत या मनोरंजन चुनें; कम खर्च के विकल्प के रूप में प्लेलिस्ट या उद्घोषक रखें।",
+            "budget_tip": "संकेतात्मक अनुमान आपके बजट से अधिक है। मेहमान कम करें, सजावट सरल रखें, सामुदायिक स्थल चुनें या कम लागत वाले पैकेज का मदवार कोट माँगें।",
+            "timeline": ["तारीख, मेहमानों की संख्या और खर्च सीमा तय करें", "स्थलों की सूची बनाएँ और लिखित कोट लें", "भोजन, पहुँच, सजावट और समय की पुष्टि करें", "मेहमानों की संख्या, विक्रेताओं के आगमन और वैकल्पिक योजना की पुनः पुष्टि करें"],
+            "weeks": ["12–16 सप्ताह पहले", "8–10 सप्ताह पहले", "4–6 सप्ताह पहले", "1 सप्ताह पहले"],
+            "budget_shortfall": "संकेतात्मक लागत बजट से अधिक",
+            "budget_note": "ये संकेतात्मक योजना अनुमान हैं, पक्के विक्रेता कोट नहीं। मार्केटप्लेस पैकेज मूल्य संदर्भ के लिए हैं; अंतिम मूल्य और उपलब्धता विक्रेता से पुष्टि करें।",
+            "venue_type": "पसंदीदा स्थल का प्रकार",
+            "decoration_preference": "सजावट की पसंद",
+            "theme_preference": "थीम की पसंद",
+            "food_preference": "भोजन की पसंद",
+            "market_price_note": "मार्केटप्लेस पर सूचीबद्ध शुरुआती मूल्य; उपलब्धता और अंतिम शर्तें विक्रेता से पुष्टि करें।",
+            "guest_count_note": f"{guests} मेहमान: RSVP दर्ज करें और खानपान व पहुँच संबंधी आवश्यकताओं की पुष्टि करें।",
+        },
+    }
+    copy = localizations[language]
+    return copy, copy["summary"]
+
 @app.route("/api/ai/plan", methods=["POST"])
 def ai_event_planner():
-    data = request.json or {}
-    event_type = data.get("event_type", "wedding")
-    guests = int(data.get("guests", 150))
-    city = data.get("city", "Hyderabad")
-    budget_tier = data.get("budget_tier", "premium")
-    lang = data.get("language", "en")
-    user_prompt = data.get("prompt", "").strip()
+    if request.content_length is not None and request.content_length > 8192:
+        return jsonify({"error": "Planner request is too large. Shorten the optional preferences and try again."}), 413
+    retry_after = rate_limit_auth_attempt("event-planner", 20, 600)
+    if retry_after:
+        response = jsonify({"error": "Too many plans requested. Please wait a few minutes and try again."})
+        response.status_code = 429
+        response.headers["Retry-After"] = str(retry_after)
+        return response
 
-    # Calculate realistic South Asian event budget allocation
-    if budget_tier == "budget":
-        base_budget = guests * 1100
-    elif budget_tier == "premium":
-        base_budget = guests * 2400
-    else: # luxury
-        base_budget = guests * 4800
+    data = _request_data()
+    event_type, error = _planner_optional_text(data, "event_type", "Event occasion", 80)
+    if error or not event_type:
+        return jsonify({"error": error or "Event occasion is required."}), 400
+    city, error = _planner_optional_text(data, "city", "Event location", 120)
+    if error or not city:
+        return jsonify({"error": error or "Event location is required."}), 400
+    occasion, error = _planner_optional_text(data, "occasion", "Occasion details", 80)
+    if error:
+        return jsonify({"error": error}), 400
+    language = data.get("language", "en")
+    if language not in ("en", "te", "hi"):
+        return jsonify({"error": "Choose English, Telugu, or Hindi for the plan language."}), 400
+    guests = data.get("guests")
+    if isinstance(guests, bool) or not isinstance(guests, int) or not 1 <= guests <= 50000:
+        return jsonify({"error": "Expected guests must be a whole number between 1 and 50,000."}), 400
+    budget = data.get("total_budget")
+    if isinstance(budget, bool) or not isinstance(budget, (int, float)) or not math.isfinite(budget) or not 1 <= budget <= 1_000_000_000:
+        return jsonify({"error": "Total budget must be an INR amount from ₹1 to ₹1,000,000,000."}), 400
+    budget = round(budget)
+    if budget < 1:
+        return jsonify({"error": "Total budget must be at least ₹1."}), 400
 
-    catering = round(base_budget * 0.40)
-    venue = round(base_budget * 0.25)
-    decor = round(base_budget * 0.15)
-    photography = round(base_budget * 0.12)
-    dj_music = round(base_budget * 0.08)
+    event_date = data.get("event_date", "")
+    if not isinstance(event_date, str):
+        return jsonify({"error": "Event date must be an ISO date or left blank."}), 400
+    event_date = event_date.strip()
+    if event_date:
+        try:
+            parsed_date = datetime.date.fromisoformat(event_date)
+        except ValueError:
+            return jsonify({"error": "Enter a valid event date or leave it blank."}), 400
+        if parsed_date < datetime.date.today():
+            return jsonify({"error": "Event date cannot be in the past."}), 400
 
-    # Authentic themes
-    themes = {
-        "wedding": {
-            "en": {"name": "Temple Jasmine & Royal Kanchipuram Gold", "colors": "Temple Gold, Marigold Yellow, Crimson Rose"},
-            "te": {"name": "సాంప్రదాయ మల్లెల పరిమళం & కెంపు బంగారు థీమ్", "colors": "స్వర్ణ పసుపు, కెంపు ఎరుపు, మల్లె తెలుపు"},
-            "hi": {"name": "पारंपरिक चमेली एवं स्वर्णिम कांचीपुरम वैभव", "colors": "स्वर्णिम पीला, गहरा लाल, दूधिया सफेद"}
-        },
-        "birthday": {
-            "en": {"name": "Lavender Pastel Glow & Fairy Lights", "colors": "Soft Lavender, Warm Gold, Ivory"},
-            "te": {"name": "లావెండర్ పాస్టెల్ వెలుగులు & ఫెయిరీ లైటింగ్", "colors": "లేత లావెండర్, మెరిసే బంగారం, ఐవరీ"},
-            "hi": {"name": "लैवेंडर पेस्टल ग्लो एवं फेयरी लाइट सजावट", "colors": "सॉफ्ट लैवेंडर, सुनहरा, क्रीम"}
-        },
-        "cradle_ceremony": {
-            "en": {"name": "Traditional Cradle Lotus & Gokulam", "colors": "Lotus Pink, Fresh Leaf Green, Pure White"},
-            "te": {"name": "గోకులం ఉయ్యాల & కమలం సాంప్రదాయ థీమ్ (బారసాల)", "colors": "కమల గులాబీ, చిగురుటాకు పచ్చ, తెలుపు"},
-            "hi": {"name": "पारंपरिक गोकुलम एवं कमल पुष्प झूला उत्सव", "colors": "गुलाबी, ताज़ा हरा, सफेद"}
-        }
-    }
+    preferences = {}
+    for field, label in (
+        ("venue_type", "Venue preference"),
+        ("food_preference", "Food preference"),
+        ("decoration_preference", "Decoration preference"),
+        ("theme_preference", "Theme preference"),
+    ):
+        preferences[field], error = _planner_optional_text(data, field, label)
+        if error:
+            return jsonify({"error": error}), 400
 
-    selected_theme = themes.get(event_type, themes["wedding"]).get(lang, themes.get(event_type, themes["wedding"])["en"])
+    normalized_type = event_type.lower().replace(" ", "_")
+    benchmark_type = normalized_type if normalized_type in PLANNER_BUDGETS_PER_GUEST else "other"
+    shares = PLANNER_CATEGORY_SHARES[benchmark_type]
+    indicative_total = round(guests * PLANNER_BUDGETS_PER_GUEST[benchmark_type])
+    checklist_copy, summary = _planner_text(language, occasion or event_type, city, guests, event_date)
 
-    # Match real registered providers from SQLite
     conn = get_db()
-    matched_vendors = []
-    categories = ["catering", "venues", "decorations", "photography", "dj_music"]
-    for cat in categories:
-        v = conn.execute('''
-        SELECT id, business_name, category, cities, rating_avg, review_count, image_url 
-        FROM vendor_profiles 
-        WHERE category = ? AND cities LIKE ? 
-        LIMIT 1
-        ''', (cat, f"%{city}%")).fetchone()
-        if not v:
-            v = conn.execute("SELECT id, business_name, category, cities, rating_avg, review_count, image_url FROM vendor_profiles WHERE category = ? LIMIT 1", (cat,)).fetchone()
-        if v:
-            matched_vendors.append(dict(v))
-    conn.close()
+    try:
+        marketplace_vendors, marketplace_estimates = _planner_vendor_prices(
+            conn, city, guests, checklist_copy["market_price_note"]
+        )
+    finally:
+        conn.close()
 
-    # Preparation checklist
-    checklist = [
-        {"timeline": "3 Months Prior", "task": "Book Auspicious Muhurtham Convention Hall & Caterer"},
-        {"timeline": "6 Weeks Prior", "task": "Finalize Mandap Floral Decor theme & Candid Photographer"},
-        {"timeline": "3 Weeks Prior", "task": "Send Digital WhatsApp Invites with RSVP QR Pass"},
-        {"timeline": "1 Week Prior", "task": "Confirm final guest count & synchronize Event Master Run-Sheet"}
-    ]
+    reference_costs = {
+        category: marketplace_estimates.get(category, round(indicative_total * share))
+        for category, share in shares.items()
+    }
+    reference_total = sum(reference_costs.values())
+    if reference_total <= 0:
+        reference_total = indicative_total
+        reference_costs = {category: round(reference_total * share) for category, share in shares.items()}
+        reference_costs["dj_music"] += reference_total - sum(reference_costs.values())
+
+    estimated_total = min(reference_total, budget)
+    ratio = estimated_total / reference_total
+    allocations = {category: round(amount * ratio) for category, amount in reference_costs.items()}
+    last_category = list(allocations)[-1]
+    allocations[last_category] += estimated_total - sum(allocations.values())
+
+    language_copy = PLANNER_CATEGORY_LABELS[language]
+    weeks = checklist_copy["weeks"]
+    tasks = checklist_copy["timeline"]
+    checklist = [{"timeline": weeks[index], "task": task} for index, task in enumerate(tasks)]
+
+    budget_breakdown = {}
+    for category, amount in allocations.items():
+        market_vendor = marketplace_vendors.get(category)
+        budget_breakdown[category] = {
+            "label": language_copy[category],
+            "amount": amount,
+            "percentage": round(amount / estimated_total * 100) if estimated_total else 0,
+            "basis": "marketplace_listing" if market_vendor else "indicative_planning_estimate",
+            "note": (
+            f"Based on {market_vendor['business_name']} package {market_vendor['package_title']}; {checklist_copy['market_price_note']}"
+                if market_vendor
+            else checklist_copy["budget_note"]
+            ),
+            "marketplace_reference": market_vendor,
+        }
+
+    guest_suggestions = [checklist_copy["food"], checklist_copy["guest_count_note"]]
+    venue_suggestions = [checklist_copy["venue"]]
+    if preferences["venue_type"]:
+        venue_suggestions.append(f"{checklist_copy['venue_type']}: {preferences['venue_type']}")
+    decoration_suggestions = [checklist_copy["decor"]]
+    if preferences["decoration_preference"]:
+        decoration_suggestions.append(f"{checklist_copy['decoration_preference']}: {preferences['decoration_preference']}")
+    if preferences["theme_preference"]:
+        decoration_suggestions.append(f"{checklist_copy['theme_preference']}: {preferences['theme_preference']}")
+    if preferences["food_preference"]:
+        guest_suggestions.append(f"{checklist_copy['food_preference']}: {preferences['food_preference']}")
+
+    recommendations = []
+    for category, vendor in marketplace_vendors.items():
+        recommendations.append(vendor)
 
     return jsonify({
+        "planner_mode": "local_estimate",
         "blueprint": {
             "event_type": event_type,
+            "occasion": occasion or event_type,
+            "event_date": event_date or None,
             "guests": guests,
             "city": city,
-            "budget_tier": budget_tier,
-            "total_estimated_budget": base_budget,
-            "theme": selected_theme,
-            "itemized_budget": {
-                "catering": {"amount": catering, "percentage": 40, "note": f"~₹{round(catering/guests)}/plate"},
-                "venue": {"amount": venue, "percentage": 25, "note": "AC Main Hall + Dining Suite"},
-                "decorations": {"amount": decor, "percentage": 15, "note": "Mandap + Entrance Arch"},
-                "photography": {"amount": photography, "percentage": 12, "note": "Candid + Drone + Album"},
-                "dj_music": {"amount": dj_music, "percentage": 8, "note": "High-Output Sound & Emcee"}
-            },
+            "language": language,
+            "preferences": preferences,
+            "summary": summary,
+            "total_budget": budget,
+            "total_estimated_budget": estimated_total,
+            "reference_estimated_total": reference_total,
+            "budget_shortfall": max(0, reference_total - budget),
+            "budget_status": "within_budget" if reference_total <= budget else "budget_insufficient",
+            "budget_note": checklist_copy["budget_note"],
+            "budget_alternatives": checklist_copy["budget_tip"] if reference_total > budget else "",
+            "itemized_budget": budget_breakdown,
+            "venue_suggestions": venue_suggestions,
+            "decoration_suggestions": decoration_suggestions,
+            "guest_arrangements": guest_suggestions,
+            "photography_suggestions": [checklist_copy["photo"]],
+            "entertainment_suggestions": [checklist_copy["entertainment"]],
             "checklist": checklist,
-            "recommended_vendors": matched_vendors,
-            "voice_summary": {
-                "te": f"{guests} మంది అతిథులకు {selected_theme['name']} తో ఈవెంట్ బ్లూప్రింట్ సిద్ధమైంది. అంచనా బడ్జెట్ ₹{base_budget:,.0f}.",
-                "hi": f"{guests} मेहमानों के लिए {selected_theme['name']} की विस्तृत योजना तैयार है। अनुमानित बजट ₹{base_budget:,.0f} है।",
-                "en": f"AI Blueprint generated for {guests} guests with '{selected_theme['name']}'. Total estimated budget is ₹{base_budget:,.0f}."
-            }
-        }
+            "recommended_vendors": recommendations,
+        },
     })
 
 @app.route("/api/ai/seller-assist", methods=["POST"])

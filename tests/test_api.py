@@ -72,7 +72,20 @@ def run_all():
     test('Compare Vendors (IDs 1 & 2)', f'{base}/api/vendors/compare', 'POST', {'vendor_ids':[1,2]})
 
     # 3. AI Planning & Seller Assist
-    test('AI Event Plan (Wedding in Telugu)', f'{base}/api/ai/plan', 'POST', {'event_type':'wedding','guests':200,'city':'Hyderabad','language':'te'})
+    test(
+        'Event Planning Estimate (Wedding in Telugu)',
+        f'{base}/api/ai/plan',
+        'POST',
+        {
+            'event_type': 'wedding',
+            'occasion': 'Wedding celebration',
+            'guests': 200,
+            'city': 'Hyderabad',
+            'total_budget': 600000,
+            'event_date': '',
+            'language': 'te'
+        }
+    )
     test('AI Seller Assist', f'{base}/api/ai/seller-assist', 'POST', {'bullet_points':'Sony A7IV, candid expert','category':'photography','target_language':'en'}, token=token_v)
 
     # 4. Customer Events & Workspace

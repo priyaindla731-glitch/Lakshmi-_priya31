@@ -95,7 +95,22 @@ export const api = {
 
   // AI Planner
   async planEvent(payload) {
-    return this.request("/api/ai/plan", { method: "POST", body: payload });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    try {
+      return await this.request("/api/ai/plan", {
+        method: "POST",
+        body: payload,
+        signal: controller.signal
+      });
+    } catch (error) {
+      if (error.name === "AbortError") {
+        throw new Error("Plan generation timed out. Check your connection and try again.");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   },
 
   async sellerAssist(payload) {
